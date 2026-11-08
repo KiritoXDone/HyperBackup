@@ -1,0 +1,26 @@
+Use case: ui-mockup
+Asset type: three Android backup workflow screens, matching an approved Miuix design.
+Reference image is the APPROVED design board. Continue its precise KernelSU-derived Miuix visual language: off-white background, pure white generously rounded cards with NO borders/shadows, large left-aligned titles with breathing room, near-black typography and iconography, blue actions, restrained green/amber semantic colors. Match card radius, spacing, text density. Do not change to generic Material/iOS or dashboard aesthetic.
+Composition: three equal tall flat phone screenshots side by side on neutral board, tiny captions above "恢复确认", "任务进行中", "部分完成 · 深色". 9:20 ratio, native status bar and gesture area. These are nested pages with back arrow top-left and no main bottom navigation.
+Screen 1 light:
+Large title "确认恢复", supporting text "3 个应用 · 来自家庭 NAS".
+One white grouped card: "恢复到" / "主用户 · 0" chevron; "恢复内容" / "安装包、私有数据" chevron; "高级恢复" / "应用状态未启用" chevron.
+A restrained pale amber inline banner with small warning icon and exact text "将覆盖所选应用的当前数据".
+Another white setting card: "先备份当前数据" title, gray "保存恢复前副本，成功后才覆盖", blue switch ON at right. Below in same group a row "副本位置" / "家庭 NAS".
+Small white check group with 2 rows: "归档检查" / "3 项通过"; "所需临时空间" / "4.2 GB · 空间充足". This is a plan confirmation, no auto-rollback guarantee.
+Pinned bottom area blue full-width Miuix rounded rectangular button "开始恢复". A small secondary line above it "从远端逐应用下载并校验". Clear safe area.
+Screen 2 light:
+Large title "正在备份". One pale blue status card "刷机前备份", "家庭 NAS · SMB". Main metric "12 / 28 已完成" with smaller line "当前：微信". A thin blue progress indicator labelled "当前应用：压缩数据". Do not print percentage because bytes total unknown.
+Below one white grouped card showing 3 compact statistic columns "12 已完成" "1 处理中" "15 待处理". Numbers must sum to 28.
+Next grouped card rows with app icons: "微信" / "正在压缩私有数据"; "哔哩哔哩" / "备份完成"; "Telegram" / "备份完成". Current state blue, completed gray or small green dot.
+A white row "查看日志" chevron. Quiet explanatory line "离开页面不会主动停止任务".
+Pinned neutral gray Miuix secondary button "停止任务". Do NOT show Pause, Resume, or promise reboot continuation.
+Screen 3 DARK:
+Near-black canvas and dark charcoal rounded white-equivalent surfaces, off-white text, subtle gray body text; same type hierarchy and proportions.
+Large title "恢复结果".
+Restrained muted amber status card with amber warning icon, title "部分完成", subtitle "27 个应用已恢复，1 个未恢复". No large scary red panel, no green all-success checkmark.
+Grouped charcoal result card with 2 rows: "已完成" / "27 个应用"; "失败" / "1 个应用".
+Section small gray "需要处理". Dark card with Bilibili pink app icon, name "哔哩哔哩", reason "归档校验失败", gray clarification "未开始覆盖该应用". Text link "查看详情".
+Another dark row "恢复前备份" / "已保存 · 家庭 NAS" chevron.
+Pinned blue button "重新检查失败项", secondary subdued text action "返回首页". Recheck leads to new review, not automatic replay.
+Constraints: only app-level concepts users need. Miuix SwitchPreference, BasicComponent, cards, default page shell; exact Chinese labels; consistent margins, screen title scale and app icon scale with approved reference. Fictional data. No fake unknown APIs or unsupported functionality.

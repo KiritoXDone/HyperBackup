@@ -1,0 +1,7 @@
+Use case: text-localization
+Edit target: the attached three-screen Miuix Android design board.
+Make ONLY this precise text correction on the LEFT "确认恢复" screen in its lower white validation card:
+Replace the row title "归档检查" with "备份清单".
+Replace its subtitle "3 项通过" with "3 项已识别".
+This reflects that full archive verification occurs after each app is downloaded, not before confirmation.
+Preserve everything else exactly: all three screens, all positions, UI geometry, card styling, colors, typography sizes, icons, text elsewhere, backgrounds, aspect ratio and resolution. Do not redesign or add elements.

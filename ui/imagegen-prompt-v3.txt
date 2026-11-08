@@ -1,0 +1,38 @@
+Use case: ui-mockup
+Asset type: native Miuix Android backup app design, 3-screen board.
+Reference 1 is the user's KernelSU HOME already in Miuix mode. Reference 2 is its SUPERUSER list. Reference 3 is its Miuix SETTINGS screen. These references are the mandatory VISUAL TARGET. Prior two unrelated backup-app mockups were rejected. Closely match the exact visual rhythm, surface hierarchy, large header placement, rounded white separate cards, monochrome icons, calm spacing, and bottom navigation seen in these KernelSU screenshots. Translate this same design system into a backup app. Do not redesign the style, do not add a marketing or dashboard aesthetic.
+Composition: one landscape board of 3 equal tall full-phone screen captures side by side (9:20 or 1080:2460 proportion). Front-facing, no perspective, no thick device mockup borders. Neutral gray board, a subtle small caption outside each screen: "首页", "应用", "备份库". Use the user's screenshots as proportion guides. Clear large Chinese type at natural phone sizes, regular rounded Chinese system font, not overly bold typographic poster text. Off-white page #F6F6F6, white cards, near-black primary text, medium-gray secondary text. Only status banner softly green and selected switches/checks soft blue. No gradient, no shadow, no outline border on cards, no glass, no fancy illustration.
+Common layout and bottom nav:
+Match KernelSU screenshot: status bar, a slim toolbar with small action icon at upper right, then a large left aligned collapsing page title with substantial top breathing space, then content with about 12dp card margins and 14dp vertical card gaps. Cards have the characteristic generous Miuix rounded corners. Bottom fixed nav matches the reference closely, with FOUR evenly spaced monochrome filled/outlined icons and short Chinese labels: "首页", "应用", "备份库", "设置". Selected icon and label black, others neutral gray. Not blue selection. Not floating pills. Navigation at true bottom above gesture inset, scrollable content can end naturally behind it.
+Screen 1:
+Upper-right small clock/history icon (task center). Big title "备份".
+Single green status card closely shaped like KernelSU Working card. Left title "上次备份已完成", second line "今天 14:32 · 28 个应用", third line "家庭 NAS · SMB". Oversized green outline circle-check cropped at bottom-right, same restrained visual role as reference 1. This refers ONLY to last backup result, not blanket phone protection.
+Below one white grouped card with 3 roomy icon rows, black outlined icons at left, title and smaller gray subtitle, gray right chevrons:
+"备份应用" / "选择应用和要保存的数据"
+"恢复应用" / "从已有备份中选择版本"
+"备份位置" / "家庭 NAS · 剩余 1.2 TB"
+No colorful action tiles, no huge numeric 28, no thumbnail icon strip in overview.
+Next white grouped card with 2 rows:
+"最近任务" / "28 项完成，0 项失败"
+"运行环境" / "Root 已连接 · 主用户"
+The home should feel as calm, simple and native as KernelSU Home with status and grouped information, NOT like the previous dashboard.
+Screen 2:
+Top toolbar right sort icon and circled more icon exactly like KernelSU superuser toolbar. Large title "应用". A wide gray Miuix search bar under it, placeholder "搜索名称或包名". Small unboxed horizontal line below "主用户" with dropdown chevron, right text action "选择".
+App list is exactly the reference 2 pattern: separate white rounded cards, each 72-ish dp high, large app icon left, two text lines, small subdued blue status text at right and gray chevron. Five visible cards:
+微信 / com.tencent.mm / 已备份
+哔哩哔哩 / tv.danmaku.bili / 已备份
+Telegram / org.telegram.messenger / 已备份
+网易云音乐 / com.netease.cloudmusic / 未备份 (gray)
+Via 浏览器 / mark.via.gp / 未备份 (gray)
+No checkboxes in this browsing state; the top "选择" enters multi-select later. Do not put a button over bottom navigation. App tab selected black.
+Screen 3:
+Top right plus icon (add backup location), large title "备份库".
+White source-selector card, simple black server icon left, "家庭 NAS" title, gray "SMB · 已连接" below, right gray down-chevron.
+Gray search bar "搜索备份或应用".
+Small gray section label "今天".
+White rounded backup batch card "刷机前备份" medium-bold, gray subtitle "14:32 · 主用户", next row "28 个应用 · 18.6 GB", bottom small pale-green text badge "已完成"; right chevron, no gradients. App mini icons are allowed only here as 3 small leading icons next to the application count.
+Small gray section label "昨天".
+Another white batch card "应用备份", subtitle "21:08 · 主用户", next row "12 个应用 · 6.3 GB", same "已完成" badge.
+Third white batch card "恢复前备份", subtitle "20:16 · 主用户", next row "微信 · 3.8 GB", tiny gray subtitle "恢复操作前保存的副本".
+Backups tab selected black.
+Constraints: closely MATCH KernelSU Miuix references, not general Material or iOS. Ordinary app names are mock data. No version badges or developer identifiers on home; no unsupported features, no system backup, no cloud provider logos. All copy above exact Chinese. Render a visually coherent realistic native app, preserving Miuix simple default surfaces and iconography.
