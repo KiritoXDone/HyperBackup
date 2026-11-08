@@ -41,9 +41,10 @@ config.write_text(f'''[global]
 subprocess.run(['testparm', '--suppress-prompt', str(config)], check=True)
 subprocess.run(['sudo', 'smbpasswd', '-c', str(config), '-a', '-s', 'ci'],
                input='fixture-only\nfixture-only\n', text=True, check=True)
+# Foreground smbd treats EOF on a pipe as parent death; use a non-pipe stdin.
 with Path('work/smbd.log').open('w') as log:
     process = subprocess.Popen(['sudo', '/usr/sbin/smbd', '--foreground', '--no-process-group', '--configfile', str(config)],
-                               stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+                               stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     for _ in range(100):
         if process.poll() is not None:
             raise RuntimeError('Samba fixture exited; inspect work/smbd.log and work/samba.log')
