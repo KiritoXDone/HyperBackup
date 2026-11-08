@@ -1,0 +1,17 @@
+Mode: built-in image_gen
+Reference: user-selected DataBackup icon observed via ADB screenshot.
+
+Use case: logo-brand
+Asset type: a refined minimal flat Android app icon for HyperBackup, derived from the icon the user selected on their phone.
+REFERENCE: the attached PHONE SCREENSHOT. Use ONLY the orange-and-white DataBackup icon on the left side of the first App info card, immediately to the left of the word "DataBackup". Ignore all phone UI, text and other icons. This chosen icon depicts a white storage card with a clipped upper-left corner, a small top notch and a dotted rightward transfer arrow, on an orange squircle.
+Primary request: evolve that specific orange storage-card design into a cleaner, more modern Miuix-style icon. Keep its recognizable visual DNA: orange container, white storage-card silhouette, and a rightward data-transfer motif. Do not use the earlier blue tray/return-arrow design.
+Design:
+- One orange squircle, with smooth continuous HyperOS-style rounded corners and balanced proportions.
+- One optically centered bold white storage-card glyph, approximately 42% of container width and 55% of container height.
+- Preserve a single simple diagonal cut at the card's upper-left corner and softly rounded lower corners.
+- Keep a tiny broad, rounded orange notch cut into the card's upper edge, simplified to one rectangular notch.
+- Replace the original string of tiny dots with ONE simple thick right-pointing arrow cut out of the lower-middle of the white card. The arrow uses the exact same flat orange as the container. Rounded joins and proportional thick stem, no outline. This should feel like data being saved into the card, very legible at small size.
+- No extra interior lines, contacts, ornamental dots, text, letters or H monogram.
+Palette: only flat warm orange #FF9E43 and flat pure white #FFFFFF. Absolutely NO gradient, shading, texture, glow, bevel, 3D or shadow. Razor-clean vector-like edges, excellent antialiasing, no specks.
+Composition: one single icon centered on a square 1024x1024 pure white canvas; orange squircle occupies 90% of the canvas with a small uniform white outer margin. Front-on, flat. No device mockup, no labels, no alternate icons, no presentation board. The glyph should be calm, minimal and visually polished, with plenty of orange negative space.
+Deliver only this icon.

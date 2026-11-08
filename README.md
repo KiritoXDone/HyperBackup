@@ -1,5 +1,7 @@
 # HyperBackup
 
+<img src="ui/branding/hyperbackup-orange-v1.png" width="128" alt="HyperBackup 橙白图标设计稿" />
+
 基于 [backup_script](https://github.com/YAWAsau/backup_script) 执行能力设计的 Android 备份恢复应用，使用 Miuix UI，参考 Android-DataBackup 的产品流程。
 
 **当前阶段：设计 v1 已冻结，App 尚未实现。** 本仓库包含架构、功能边界、数据契约、UI 和验收计划。设计基线确认于 2026-11-08；后续改变关键边界时，应更新对应文档与 ADR。
@@ -14,6 +16,7 @@
 | [范围与行为](docs/BOUNDARIES.md) | 首版包含/排除、原脚本应用保护与 APK 策略、存储与恢复故障边界 |
 | [模型和格式](docs/DATA-FORMAT.md) | 身份、不可变备份版本、提交记录、hash、索引重建与删除 |
 | [UI 规范](docs/UI-SPEC.md) | 已确认视觉方向、完整路由、各页行为、状态文案与无障碍 |
+| [项目图标](docs/BRANDING.md) | 已确认橙白方案、原始图稿与 Android 图标资源制作边界 |
 | [开发与验收](docs/VALIDATION-PLAN.md) | P0–P4、核心案例、故障注入、设备/视觉验证标准 |
 | [术语](GLOSSARY.md) | 备份、版本、批次、来源/目标用户、恢复前副本 |
 | [证据](docs/SOURCES.md) | 固定 SHA 源码、官方约束与 ADB 观察范围 |
