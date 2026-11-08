@@ -1,6 +1,6 @@
 # HyperBackup
 
-<img src="ui/branding/hyperbackup-orange-v1.png" width="128" alt="HyperBackup 橙白图标设计稿" />
+<img src="ui/branding/hyperbackup.svg" width="128" alt="HyperBackup 图标" />
 
 基于 [backup_script](https://github.com/YAWAsau/backup_script) 完整业务执行能力的独立 Android 备份恢复 App，采用 Miuix UI，并持续跟进上游新能力。
 
@@ -13,7 +13,7 @@
 - 与声明支持的原脚本版本双向兼容，保留原生备份根和 metadata；App 索引、任务及 hash 是附加层。
 - 提供“新建备份集”和“更新已有备份集”，默认新建保留历史；更新使用上游 fast-skip，不伪称新增历史快照。
 - 支持流式/非流式备份以及下载后/直接串流恢复；默认下载后恢复，应用恢复前副本默认开启并可明确关闭。
-- 用户界面沿用 KernelSU Miuix 四入口和橙白图标，不要求照搬上游壁纸/玻璃/背景动画。
+- 用户界面沿用 KernelSU Miuix 四入口和蓝紫色数据堆叠图标，不要求照搬上游壁纸/玻璃/背景动画。
 - 上游更新先做差异分析、适配和回归，再随 HyperBackup APK 发布。每版锁定源 SHA、配套产物、补丁和协议，运行时不直接执行 latest。
 
 Android 基线沿用上游：Android 9+、arm64、Root；Magisk/KernelSU 与其他环境须分别列出验证结果。平台限制、安装未知结果、局部事务和部分写入均如实报告，不承诺任意应用免登录或整批回滚。
@@ -29,7 +29,7 @@ Android 基线沿用上游：Android 9+、arm64、Root；Magisk/KernelSU 与其�
 | [格式与互操作](docs/DATA-FORMAT.md) | 原生备份集、附加索引、新建/更新和双向兼容 |
 | [UI](docs/UI-SPEC.md) | 四入口、全能力信息架构、页面状态与 Miuix 组件约束 |
 | [验证计划](docs/VALIDATION-PLAN.md) | 开发里程碑、覆盖证据、互操作和故障回归 |
-| [图标](docs/BRANDING.md) | 已确认橙白设计稿与 Android 图标资源边界 |
+| [图标](docs/BRANDING.md) | 蓝紫色数据堆叠图标与 Android 图标资源边界 |
 | [术语](GLOSSARY.md) | 能力基线、备份集/批次、账号/用户映射和双向兼容 |
 | [来源](docs/SOURCES.md) | 固定 SHA、官方 API 与实机视觉证据 |
 

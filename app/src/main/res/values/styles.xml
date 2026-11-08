@@ -5,5 +5,5 @@
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:colorAccent">#3482FF</item>
     </style>
-    <color name="icon_orange">#FF860A</color>
+    <color name="icon_violet">#6264D9</color>
 </resources>
