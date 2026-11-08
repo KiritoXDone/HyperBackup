@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,6 +36,26 @@ def prepare(tag):
     output.joinpath('notes.md').write_text(notes(ROOT.joinpath('changelog.md').read_text(), name))
     return name, code, output
 
+def verify_payload(apk, native):
+    prefix = 'assets/upstream/'
+    with ZipFile(apk) as archive:
+        embedded = json.loads(archive.read(prefix + 'provenance.json'))
+        if embedded != native:
+            raise ValueError('APK embeds a different native provenance record')
+        manifest = archive.read(prefix + 'PAYLOAD-SHA256SUMS').decode().splitlines()
+        hashes = {}
+        for line in manifest:
+            digest, name = line.split('  ', 1)
+            if '/' in name or name in hashes or not re.fullmatch(r'[a-f0-9]{64}', digest):
+                raise ValueError('Invalid or duplicate payload manifest entry')
+            if hashlib.sha256(archive.read(prefix + name)).hexdigest() != digest:
+                raise ValueError(f'APK payload checksum mismatch: {name}')
+            hashes[name] = digest
+        files = {n[len(prefix):] for n in archive.namelist() if n.startswith(prefix) and not n.endswith('/')}
+        if set(hashes) != files - {'PAYLOAD-SHA256SUMS'} or hashes.get('speednative') != native['sha256']:
+            raise ValueError('APK payload is incomplete or has a different native binary')
+
+
 def package(tag, apk, sdk):
     name, code, output = prepare(tag)
     tools = Path(sdk) / 'build-tools/37.0.0'
@@ -49,10 +70,11 @@ def package(tag, apk, sdk):
     if set(digests) != {ROOT.joinpath('ci/signing-cert.sha256').read_text().strip()}:
         raise ValueError('APK signature differs from the pinned release certificate')
     subprocess.run(['python3', 'ci/verify_native.py'], cwd=ROOT, check=True)
+    provenance = json.loads(ROOT.joinpath('engine/generated/provenance.json').read_text())
+    verify_payload(apk, provenance)
     target = output / f'HyperBackup-{name}-arm64-v8a.apk'
     shutil.copyfile(apk, target)
     output.joinpath('SHA256SUMS').write_text(f'{hashlib.sha256(target.read_bytes()).hexdigest()}  {target.name}\n')
-    provenance = json.loads(ROOT.joinpath('engine/generated/provenance.json').read_text())
     provenance.update(commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(), tag=tag,
                       apkSha256=hashlib.sha256(target.read_bytes()).hexdigest())
     output.joinpath('provenance.json').write_text(json.dumps(provenance, indent=2) + '\n')

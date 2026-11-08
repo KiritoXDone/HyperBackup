@@ -1,6 +1,10 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import tempfile
+import hashlib
+import json
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[2]
 def load(name):
@@ -27,3 +31,22 @@ class ReleaseContracts(unittest.TestCase):
         with self.assertRaises(ValueError): coverage.validate(manifest, {'CAP-01'}, {'backup'}, release=True)
     def test_wrong_version_tag_is_rejected(self):
         with self.assertRaises(ValueError): release.prepare('v999.0.0')
+
+    def test_apk_payload_must_match_both_manifest_and_native_provenance(self):
+        binary = b'pinned-native'
+        native = {'sha256': hashlib.sha256(binary).hexdigest()}
+        provenance = json.dumps(native).encode()
+        files = {'speednative': binary, 'provenance.json': provenance}
+        manifest = ''.join(f'{hashlib.sha256(body).hexdigest()}  {name}\n' for name, body in files.items())
+        with tempfile.TemporaryDirectory() as directory:
+            apk = Path(directory) / 'fixture.apk'
+            for tampered in [False, True]:
+                with ZipFile(apk, 'w') as archive:
+                    for name, body in files.items():
+                        archive.writestr('assets/upstream/' + name, b'changed' if tampered and name == 'speednative' else body)
+                    archive.writestr('assets/upstream/PAYLOAD-SHA256SUMS', manifest)
+                if tampered:
+                    with self.assertRaises(ValueError): release.verify_payload(apk, native)
+                else:
+                    release.verify_payload(apk, native)
+                    with self.assertRaises(ValueError): release.verify_payload(apk, {'sha256': '0' * 64})
