@@ -47,6 +47,19 @@ Root IPC 另核对 [libsu 6.0.0 / 8c3e80f](https://github.com/topjohnwu/libsu/tr
 
 这些观察仅验证页面结构和当时 UI，不验证本设计的组件实现或备份能力。未点击执行备份/恢复/删除或修改 Root 权限开关。原始截图留在工作资料目录，最终设计包只含虚构样例的概念图。
 
-## 来源与分发
+## r2 补充核查：完整业务与长期更新
+
+完整源码盘点补充了 README 主功能表未充分列出的能力：SMS/MMS/通话记录、Google Maps Timeline、thanox/HMA-OSS 特殊路径、低 target SDK 安装选项、仅恢复未安装应用、完成后远程关机、亮屏伪装、低电量策略和特定清理/保留行为。逐项源位置见 [UPSTREAM-PARITY.md](UPSTREAM-PARITY.md)。
+
+- [菜单与 commands_data](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/tools/tools.sh#L40528-L40677)：真实分发必须与菜单变化一起核查。菜单 ID 按行号递增，不是稳定业务 API。
+- [Timeline](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/tools/tools.sh#L21308-L21600) 与 [communications](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/tools/tools.sh#L21666-L21876)：特殊格式、账号/合并与保留不能由普通应用备份代替。
+- [原生目录扫描](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/rust/src/restore_catalog.rs#L13-L29)：不能递归识别 r1 的 App 多层专用容器，故 r2 撤销该容器作为正式格式。
+- [配置同步](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/tools/tools.sh#L2704-L2731)：字段、顺序、注释、旧值和废弃键按源规则处理；不是仅添加缺项。
+- [原始工具更新](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/tools/tools.sh#L22705-L22802) 会裁剪/替换工具及包装入口；[applist_web APK 安装](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/rust/src/applist_web.rs#L882-L893) 及 Dex AppListReturn 的原包身份需要宿主适配，不能把原始更新包直接覆盖进 HyperBackup。
+- [versions.properties](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/versions.properties)、[仓库检查](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/ci/check_repository.py#L133-L185)、source-package.json、settings-options/labels 和 capabilities 共同作为变更检测来源，任何单一文件都不足以证明能力覆盖。
+
+仍未证实独立联系人导入导出、用户定时备份、通用归档口令加密、块级去重、任意断电续传或整批回滚；不能从同名权限、内部 timer、会话加密或清单去重推导这些产品能力。
+
+## 来源与分发（许可）
 
 两个参考仓库均带 GPL-3.0 许可证；backup_script 的 Rust 配置标注 GPL-3.0-only。复用时保留原作者、许可证和来源，记录固定 SHA、修改与第三方组件；分发前整理对应源码、构建方式及必要 notice。相关原文：[backup_script LICENSE](https://github.com/YAWAsau/backup_script/blob/4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5/LICENSE)、[DataBackup LICENSE](https://github.com/XayahSuSuSu/Android-DataBackup/blob/c306d7539a1ceed8ef42b3936dcfa03bb9fdcdac/LICENSE)。
