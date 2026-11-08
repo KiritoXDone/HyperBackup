@@ -32,5 +32,5 @@ if [[ -n ${HYPERBACKUP_APPLIST:-} ]]; then
     _SELECTION_CONFIRMED_KIND=restore
 fi
 set +u
-. "$HYPERBACKUP_ENGINE_TOOLS/tools.sh"
+. "${HYPERBACKUP_RUN_SCRIPT:-$HYPERBACKUP_ENGINE_TOOLS/tools.sh}"
 exit $?

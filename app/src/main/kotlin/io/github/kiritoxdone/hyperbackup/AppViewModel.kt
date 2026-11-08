@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kiritoxdone.hyperbackup.domain.*
+import io.github.kiritoxdone.hyperbackup.engine.ScriptCatalogReader
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
@@ -16,6 +17,7 @@ data class AppState(
     val repository: ScanResult? = null, val cached: Boolean = false, val tasks: List<TaskSnapshot> = emptyList(),
     val draft: Draft? = null, val plan: Plan? = null, val busy: Boolean = false, val error: String? = null,
     val connectionState: RootConnectionState = RootConnectionState.UNCHECKED, val connectionError: String? = null,
+    val behavior: AppBehavior = AppBehavior(), val enginePreferences: EnginePreferences = EnginePreferences(),
     val theme: String = "system", val pendingSubmission: Boolean = false, val scriptCatalog: ScriptCatalog? = null,
 )
 
@@ -26,15 +28,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val state = mutable.asStateFlow()
     init {
         viewModelScope.launch { app.preferences.theme.collect { value -> mutable.update { it.copy(theme = value) } } }
+        viewModelScope.launch { app.preferences.behavior.collect { value -> mutable.update { it.copy(behavior = value) } } }
+        viewModelScope.launch { app.preferences.engine.collect { value -> mutable.update { it.copy(enginePreferences = value) } } }
         action {
+            val catalog = withContext(Dispatchers.IO) { ScriptCatalogReader.fromAssets(app) }
+            val behavior = app.preferences.behavior.first()
+            val preferences = app.preferences.engine.first()
             val destinations = session.destinations(); val selected = app.preferences.selectedDestination() ?: destinations.firstOrNull()?.id
             val draft = app.preferences.draft()?.let { runCatching { Wire.json.decodeFromString<Draft>(it) }.getOrNull() }
             mutable.update { it.copy(destinations = destinations, destinationId = selected, tasks = session.cachedHistory(),
-                repository = selected?.let { id -> session.cachedRepository(id) }, cached = true, draft = draft) }
+                repository = selected?.let { id -> session.cachedRepository(id) }, cached = true, draft = draft,
+                scriptCatalog = catalog, behavior = behavior, enginePreferences = preferences) }
+            if (behavior.connectOnLaunch) connectEngine()
         }
         viewModelScope.launch {
             while (isActive) {
                 delay(3000)
+                if (state.value.capabilities != null && !session.connected) {
+                    mutable.update { it.copy(capabilities = null, connectionState = RootConnectionState.UNAVAILABLE, connectionError = "Root 服务已断开") }
+                }
                 if (state.value.capabilities != null && !state.value.busy) {
                     val active = state.value.tasks.firstOrNull { it.state in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED) }
                     if (active != null) runCatching { session.status(active.id) }.onSuccess { updateTask(it) }.onFailure {
@@ -52,7 +64,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             finally { mutable.update { it.copy(busy = false) } }
         }
     }
-    fun connect() = action {
+    fun connect() = action { connectEngine() }
+    private suspend fun connectEngine() {
         mutable.update { it.copy(connectionState = RootConnectionState.CHECKING, connectionError = null) }
         try {
             val caps = session.connect(); val catalog = session.scriptCatalog(); session.reconcileSubmissions()
@@ -86,10 +99,49 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         mutable.update { it.copy(draft = draft, plan = null) }
         viewModelScope.launch { app.preferences.draft(Wire.json.encodeToString(Draft.serializer(), draft)) }
     }
+    private fun newDraft(draft: Draft) { setDraft(ScriptPreferences.applyToNewDraft(draft, state.value.enginePreferences)) }
+    fun changeBehavior(change: (AppBehavior) -> AppBehavior) {
+        val next = change(state.value.behavior)
+        mutable.update { it.copy(behavior = next) }
+        viewModelScope.launch { app.preferences.behavior(next) }
+    }
+    fun changeEnginePreferences(change: (EnginePreferences) -> EnginePreferences) {
+        val next = change(state.value.enginePreferences)
+        mutable.update { it.copy(enginePreferences = next) }
+        viewModelScope.launch { app.preferences.engine(next) }
+    }
+    fun saveDefault(profile: ScriptProfile?, key: String, value: String, done: () -> Unit = {}) = action {
+        val next = ScriptPreferences.update(requireNotNull(state.value.scriptCatalog), state.value.enginePreferences, profile, key, value)
+        app.preferences.engine(next); mutable.update { it.copy(enginePreferences = next) }; done()
+    }
+    fun resetEnginePreferences() { changeEnginePreferences { EnginePreferences() } }
+    fun exportSettings(uri: android.net.Uri) = action {
+        val snapshot = SettingsArchive(engine = state.value.enginePreferences, behavior = state.value.behavior)
+        withContext(Dispatchers.IO) {
+            requireNotNull(app.contentResolver.openOutputStream(uri)).bufferedWriter().use { it.write(Wire.json.encodeToString(SettingsArchive.serializer(), snapshot)) }
+        }
+    }
+    fun importSettings(uri: android.net.Uri) = action {
+        val archive = withContext(Dispatchers.IO) {
+            requireNotNull(app.contentResolver.openInputStream(uri)).use { stream ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count < 0) break
+                    require(output.size() + count <= 1_048_576) { "配置文件过大" }
+                    output.write(buffer, 0, count)
+                }
+                Wire.json.decodeFromString<SettingsArchive>(output.toByteArray().decodeToString())
+            }
+        }
+        ScriptPreferences.validateArchive(requireNotNull(state.value.scriptCatalog), archive)
+        app.preferences.importSettings(archive)
+    }
     fun beginBackup() {
         val s = state.value; val id = s.destinationId ?: return clearError("请先添加备份位置")
         if (s.selectedApps.isEmpty()) return clearError("请先选择应用")
-        setDraft(ScriptPlanScope.backup(id, s.selectedApps, s.user))
+        newDraft(ScriptPlanScope.backup(id, s.selectedApps, s.user))
     }
     fun beginRecords(records: List<BackupRecord>, operation: Operation) {
         val s = state.value; val id = s.destinationId ?: return
@@ -98,12 +150,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             scriptRoot = if (destination.protocol == Protocol.LOCAL) destination.address.trimEnd('/') + "/" + r.scriptRoot.orEmpty() else null,
             scriptDirectory = r.scriptDirectory, nativeMetadataHash = r.nativeMetadataHash) }
         val command = if (operation == Operation.VERIFY) ScriptCommand.VERIFY_ARCHIVES else if (destination.protocol == Protocol.LOCAL) ScriptCommand.RESTORE_APPS else ScriptCommand.REMOTE_RESTORE_STAGED
-        if (items.isNotEmpty()) setDraft(Draft(operation, id, items, safetyCopy = true,
+        if (items.isNotEmpty()) newDraft(Draft(operation, id, items, safetyCopy = true,
             script = ScriptSpec(command, items.first().scriptRoot.orEmpty(), s.user, selectedPackages = records.map { it.app.key.packageName })))
     }
     fun beginScript(command: ScriptCommand) {
         val s = state.value; val id = s.destinationId ?: return clearError("请先添加备份位置")
-        setDraft(Draft(if (command.restore) Operation.RESTORE else Operation.BACKUP, id,
+        newDraft(Draft(if (command.restore) Operation.RESTORE else Operation.BACKUP, id,
             listOf(PlanItem(AppKey(s.user, "io.github.kiritoxdone.hyperbackup.scope"), parts = setOf(PartKind.CE))),
             safetyCopy = command.restore, script = ScriptSpec(command, "", s.user, preserveExistingList = false)))
     }

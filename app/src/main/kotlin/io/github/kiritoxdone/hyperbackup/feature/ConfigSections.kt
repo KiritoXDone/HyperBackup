@@ -54,7 +54,14 @@ import top.yukonga.miuix.kmp.preference.*
                 } }
                 val fields = s.configFields().filter { configGroup(it.key) == group }
                 item { Card(Modifier.fillMaxWidth()) {
-                    fields.forEach { field -> ArrowPreference(field.label, summary = fieldSummary(field, fieldValue(s, field)), onClick = { navigate(Route.ConfigField(field.key)) }) }
+                    fields.forEach { field ->
+                        val current = fieldValue(s, field)
+                        if (field.options.isNotEmpty()) OverlaySpinnerPreference(title = settingLabel(field),
+                            items = field.options.map { option -> DropdownItem(settingOption(option.getOrElse(1) { option[0] })) },
+                            selectedIndex = field.options.indexOfFirst { it.firstOrNull() == current }.coerceAtLeast(0),
+                            onSelectedIndexChange = { index -> update { it.copy(config = it.config + (field.key to field.options[index][0])) } })
+                        else ArrowPreference(settingLabel(field), summary = fieldSummary(field, current), onClick = { navigate(Route.ConfigField(field.key)) })
+                    }
                 } }
                 if (fields.isEmpty()) item { InfoCard("暂无可用选项", "此操作没有对应配置，或尚未完成首页的运行检查。") }
             }
@@ -71,7 +78,7 @@ import top.yukonga.miuix.kmp.preference.*
         if (field.options.isNotEmpty()) item { Card(Modifier.fillMaxWidth()) {
             field.options.forEach { option -> RadioButtonPreference(option.getOrElse(1) { option[0] }, value == option[0], { save(option[0]) }) }
         } } else {
-            item { TextField(value, { value = it }, Modifier.fillMaxWidth(), label = field.label,
+            item { TextField(value, { value = it }, Modifier.fillMaxWidth(), label = settingLabel(field),
                 minLines = if (key in setOf("Custom_path", "blacklist", "whitelist", "system")) 4 else 1) }
             item { PrimaryAction("保存", !s.busy) { save(value) } }
         }

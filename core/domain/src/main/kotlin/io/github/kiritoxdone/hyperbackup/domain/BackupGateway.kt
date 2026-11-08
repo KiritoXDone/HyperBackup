@@ -2,6 +2,7 @@ package io.github.kiritoxdone.hyperbackup.domain
 
 /** Application use cases never depend on Binder, Shell, or transport implementations. */
 interface BackupGateway {
+    fun isConnected(): Boolean
     suspend fun connect()
     suspend fun capabilities(): Capabilities
     suspend fun inventory(user: Int): List<AppInstance>

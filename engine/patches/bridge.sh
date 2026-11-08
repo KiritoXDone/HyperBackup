@@ -82,6 +82,7 @@ _hb_dispatch() {
         remote_restore_stream) _selection_prepare 'remote_stream_restore; exit $?' && remote_stream_restore ;;
         upload_existing) upload_current_backup ;;
         remote_catalog) remote_list_backups ;;
+        edit_remote_backups) Edit_remote_backups ;;
         remote_cleanup) delete_remote_uninstalled_apps ;;
         remote_health) remote_test_menu --run-choice 1 ;;
         smb_discover) remote_test_menu --run-choice 2 ;;

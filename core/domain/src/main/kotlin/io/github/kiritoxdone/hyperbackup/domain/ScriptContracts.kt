@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
     RESTORE_APP_STATE("restore_app_state", "独立恢复应用状态", true), RESTORE_FOLDERS("restore_folders", "恢复自定义目录", true),
     RESTORE_WIFI("restore_wifi", "恢复 Wi-Fi", true), REMOTE_RESTORE_STAGED("remote_restore_staged", "远端下载后恢复", true),
     REMOTE_RESTORE_STREAM("remote_restore_stream", "远端流式恢复", true), UPLOAD_EXISTING("upload_existing", "独立上传已有备份"),
+    EDIT_REMOTE_BACKUPS("edit_remote_backups", "管理远端备份"),
     REMOTE_CATALOG("remote_catalog", "读取远端备份清单"), REMOTE_CLEANUP("remote_cleanup", "清理远端已卸载应用"),
     REMOTE_HEALTH("remote_health", "远端健康检查"), SMB_DISCOVER("smb_discover", "发现局域网 SMB"),
     SMB_DISCOVER_APPLY("smb_discover_apply", "发现并试用 SMB 共享"), WEBDAV_DISCOVER("webdav_discover", "发现局域网 WebDAV"),

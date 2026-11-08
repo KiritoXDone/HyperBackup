@@ -31,6 +31,7 @@ class ScriptRunner(private val assets: RootAssets) {
         builder.environment()["PATH"] = "/system/bin:/system/xbin:/vendor/bin"
         File(config.parentFile, "appList.txt").takeIf { it.isFile }?.let { builder.environment()["HYPERBACKUP_APPLIST"] = it.path }
         // Bootstrap can acquire guards or change execution settings before an item gate.
+        builder.environment()["HYPERBACKUP_RUN_SCRIPT"] = ScriptLanguage.prepare(assets, spec, job).path
         progress("UPSTREAM_STARTING", true)
         val process = builder.start(); running[taskId] = job
         editorProxy.allowedPackages[taskId] = spec.selectedPackages.toSet()

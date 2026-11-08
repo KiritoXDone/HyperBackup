@@ -26,6 +26,7 @@ class EngineGateway(private val context: Context) : BackupGateway {
         override fun onServiceDisconnected(name: ComponentName) { remote = null }
         override fun onNullBinding(name: ComponentName) { pending?.completeExceptionally(EngineFailure("ROOT_DENIED")) }
     }
+    override fun isConnected() = remote?.asBinder()?.isBinderAlive == true
     override suspend fun connect() = withContext(Dispatchers.Main) {
         remote?.let { return@withContext }
         val awaiting = pending?.takeIf { it.isActive } ?: CompletableDeferred<IRootBridge>().also {

@@ -17,7 +17,7 @@ import org.junit.runner.RunWith
 @Keep
 @RunWith(AndroidJUnit4::class)
 class UiSmokeTest {
-    @Test fun largeTypeDarkModeOnIsolatedEmulator() {
+    @Test(timeout = 180_000) fun largeTypeDarkModeOnIsolatedEmulator() {
         assumeTrue(InstrumentationRegistry.getArguments().getString("displayScenarios") == "true")
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -31,9 +31,9 @@ class UiSmokeTest {
             withUiTestHost { device ->
                 assertNotNull(device.wait(Until.findObject(By.text("首页")), 15000))
                 device.findObjects(By.text("设置")).last().click()
-                assertNotNull(device.wait(Until.findObject(By.text("主题")), 5000))
+                device.textOnPage("主题")
                 assertFalse(device.hasObject(By.text("浅色")))
-                device.findObject(By.text("主题")).click()
+                device.textOnPage("主题").click()
                 assertNotNull(device.wait(Until.findObject(By.text("深色")), 5000))
                 device.pressBack()
             }

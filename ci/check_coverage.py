@@ -40,5 +40,11 @@ if __name__ == '__main__':
     source = ROOT.joinpath('core/domain/src/main/kotlin/io/github/kiritoxdone/hyperbackup/domain/ScriptContracts.kt').read_text()
     commands = set(re.findall(r'[A-Z_]+\("([a-z_]+)",', source))
     required = set(re.findall(r'^\| (CAP-\d+) \|', ROOT.joinpath('docs/UPSTREAM-PARITY.md').read_text(), re.M))
+    runtime = ROOT.joinpath('engine/upstream/backup_script/rust/src/runtime_conf.rs').read_text()
+    keys = set(re.search(r'const KNOWN:&str="([^"]+)"', runtime).group(1).split('|'))
+    if set(manifest.get('configuration', {})) != keys:
+        raise ValueError('Every upstream configuration key must have an explicit application owner')
+    if not set(manifest['configuration'].values()) <= {'app_runtime', 'location_or_task', 'persistent_setting'}:
+        raise ValueError('Unknown configuration owner')
     validate(manifest, required, commands, args.release)
     print(f'{len(required)} capabilities mapped; {sum(r["status"] == "verified" for r in manifest["capabilities"])} verified.')

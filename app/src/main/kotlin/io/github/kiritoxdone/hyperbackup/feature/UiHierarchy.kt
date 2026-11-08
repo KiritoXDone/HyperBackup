@@ -18,7 +18,7 @@ fun ScriptCommand.group(): ToolGroup = when (this) {
     ScriptCommand.REMOTE_RESTORE_STAGED, ScriptCommand.REMOTE_RESTORE_STREAM, ScriptCommand.UPLOAD_EXISTING, ScriptCommand.REMOTE_CATALOG -> ToolGroup.TRANSFER
     ScriptCommand.REMOTE_HEALTH, ScriptCommand.SMB_DISCOVER, ScriptCommand.SMB_DISCOVER_APPLY,
     ScriptCommand.WEBDAV_DISCOVER, ScriptCommand.WEBDAV_DISCOVER_ADVANCED, ScriptCommand.REMOTE_SPEED -> ToolGroup.CONNECTION
-    ScriptCommand.REMOTE_CLEANUP, ScriptCommand.STATISTICS, ScriptCommand.VERIFY_ARCHIVES,
+    ScriptCommand.EDIT_REMOTE_BACKUPS, ScriptCommand.REMOTE_CLEANUP, ScriptCommand.STATISTICS, ScriptCommand.VERIFY_ARCHIVES,
     ScriptCommand.VERIFY_METADATA, ScriptCommand.REBUILD_METADATA, ScriptCommand.CONVERT_NAMES -> ToolGroup.MAINTENANCE
 }
 

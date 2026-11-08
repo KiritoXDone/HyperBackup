@@ -22,7 +22,7 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.GridView
+import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable fun HomePage(s: AppState, vm: AppViewModel, padding: PaddingValues, navigate: (Route) -> Unit, library: () -> Unit) {
@@ -31,13 +31,13 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
         notices(s, vm)
         item { SectionLabel("备份与恢复") }
         item { Card(Modifier.fillMaxWidth()) {
-            ArrowPreference("备份应用", onClick = { navigate(Route.SelectApps) })
-            ArrowPreference("备份文件夹", onClick = {
+            ArrowPreference("备份应用", startAction = { LeadingIcon(MiuixIcons.GridView) }, onClick = { navigate(Route.SelectApps) })
+            ArrowPreference("备份文件夹", startAction = { LeadingIcon(MiuixIcons.Folder) }, onClick = {
                 vm.beginScript(ScriptCommand.BACKUP_FOLDERS)
                 if (vm.state.value.error == null && vm.state.value.draft?.script?.command == ScriptCommand.BACKUP_FOLDERS) navigate(Route.Config)
             })
-            ArrowPreference("恢复备份", onClick = library)
-            ArrowPreference("更多功能", onClick = { navigate(Route.Tools) })
+            ArrowPreference("恢复备份", startAction = { LeadingIcon(MiuixIcons.Reset) }, onClick = library)
+            ArrowPreference("更多功能", startAction = { LeadingIcon(MiuixIcons.More) }, onClick = { navigate(Route.Tools) })
         } }
         item { SectionLabel("备份位置") }
         item { Card(Modifier.fillMaxWidth()) {
@@ -48,7 +48,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
         item { SectionLabel("最近任务") }
         item { Card(Modifier.fillMaxWidth()) {
             val task = s.tasks.firstOrNull()
-            ArrowPreference(task?.let { "${it.plan.draft.operation.label()} · ${it.state.label()}" } ?: "还没有任务",
+            ArrowPreference(task?.let { "${it.plan.draft.script?.command?.label ?: it.plan.draft.operation.label()} · ${it.state.label()}" } ?: "还没有任务",
                 summary = task?.let { date(it.startedAt) }, onClick = { navigate(task?.let { Route.Task(it.id) } ?: Route.Tasks) })
         } }
     }
@@ -56,8 +56,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable fun AppsPage(s: AppState, vm: AppViewModel, padding: PaddingValues, selection: Boolean, navigate: (Route) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
-    var showSystem by rememberSaveable { mutableStateOf(false) }
-    val filtered = remember(s.apps, query, showSystem) { s.apps.filter { !ProtectionPolicy.protected(it) && (showSystem || !it.system) && (it.label.contains(query, true) || it.key.packageName.contains(query, true)) }.sortedBy { it.label.lowercase() } }
+    val showSystem = s.behavior.showSystemApps
+    val filtered = remember(s.apps, query, showSystem, s.behavior.appSort) { s.apps.filter { !ProtectionPolicy.protected(it) && (showSystem || !it.system) && (it.label.contains(query, true) || it.key.packageName.contains(query, true)) }.sortedBy { if (s.behavior.appSort == AppSort.PACKAGE) it.key.packageName else it.label.lowercase() } }
     PageList(padding) {
         notices(s, vm, if (selection) null else navigate)
         item { Search(query, { query = it }, "搜索名称或包名") }
@@ -70,8 +70,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
                     onSelectedIndexChange = { vm.selectUser(users[it].id) })
                 OverlaySpinnerPreference(items = listOf(DropdownItem("用户应用"), DropdownItem("含系统应用")), selectedIndex = if (showSystem) 1 else 0,
                     title = if (showSystem) "全部应用" else "用户应用", showValue = false, modifier = Modifier.weight(1.25f),
-                    insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp), onSelectedIndexChange = { showSystem = it == 1 })
-                InlineAction(if (selection) "全选" else "选择", enabled = !s.busy && filtered.isNotEmpty()) {
+                    insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp), onSelectedIndexChange = { index -> vm.changeBehavior { it.copy(showSystemApps = index == 1) } })
+                ActionIcon(if (selection) MiuixIcons.All else MiuixIcons.Edit, if (selection) "全选" else "选择应用", enabled = !s.busy && filtered.isNotEmpty()) {
                     if (selection) vm.toggleAll(filtered.map { it.key }) else navigate(Route.SelectApps)
                 }
             }
@@ -84,7 +84,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
                     AppIcon(app)
                     Column(Modifier.weight(1f)) {
                         Text(app.label.ifEmpty { app.key.packageName }, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(app.key.packageName + if (app.system) " · 系统应用" else "", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, maxLines = 2)
+                        if (s.behavior.showPackageNames) Text(app.key.packageName + if (app.system) " · 系统应用" else "", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, maxLines = 2)
                     }
                     if (selection) Checkbox(androidx.compose.ui.state.ToggleableState(app.key in s.selectedApps), { vm.toggleApp(app.key) }) else Text("›", style = MiuixTheme.textStyles.title3)
                 }

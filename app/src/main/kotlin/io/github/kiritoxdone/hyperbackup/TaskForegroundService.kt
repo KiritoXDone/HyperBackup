@@ -8,6 +8,7 @@ import android.os.PowerManager
 import io.github.kiritoxdone.hyperbackup.domain.*
 import io.github.kiritoxdone.hyperbackup.ui.label
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 
 class TaskForegroundService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -34,8 +35,12 @@ class TaskForegroundService : Service() {
                     if (id != null) {
                         val task = session.status(id)
                         if (task.state !in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED)) {
-                            getSystemService(NotificationManager::class.java).notify(1, notification("${task.plan.draft.operation.label()}${task.state.label()}"))
-                            stopForeground(STOP_FOREGROUND_DETACH); stopSelf(); break
+                            val notifyCompletion = (application as HyperBackupApp).preferences.behavior.first().completionNotification
+                            if (notifyCompletion) {
+                                getSystemService(NotificationManager::class.java).notify(1, notification("${task.plan.draft.script?.command?.label ?: task.plan.draft.operation.label()}${task.state.label()}", running = false))
+                                stopForeground(STOP_FOREGROUND_DETACH)
+                            } else stopForeground(STOP_FOREGROUND_REMOVE)
+                            stopSelf(); break
                         }
                         session.heartbeat(id)
                         val finished = task.items.count { it.outcome !in setOf(Outcome.PENDING, Outcome.RUNNING) }
@@ -50,11 +55,13 @@ class TaskForegroundService : Service() {
         }
         return START_NOT_STICKY
     }
-    private fun notification(text: String): Notification {
+    private fun notification(text: String, running: Boolean = true): Notification {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).putExtra("taskId", taskId), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 1, Intent(this, TaskForegroundService::class.java).setAction("stop").putExtra("taskId", taskId), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        return Notification.Builder(this, "tasks").setSmallIcon(R.drawable.ic_notification).setContentTitle("HyperBackup").setContentText(text)
-            .setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null, "停止任务", stop).build()).build()
+        val builder = Notification.Builder(this, "tasks").setSmallIcon(R.drawable.ic_notification).setContentTitle("HyperBackup").setContentText(text)
+            .setContentIntent(open).setOngoing(running).setAutoCancel(!running)
+        if (running) builder.addAction(Notification.Action.Builder(null, "停止任务", stop).build())
+        return builder.build()
     }
     override fun onTimeout(startId: Int, fgsType: Int) {
         scope.launch { runCatching { taskId?.let { (application as HyperBackupApp).session.stop(it) } } }

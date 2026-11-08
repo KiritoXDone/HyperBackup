@@ -13,12 +13,12 @@ internal fun AppState.configDefaults(): Map<String, String> = if (draft?.script?
     scriptCatalog?.restoreDefaults.orEmpty() else scriptCatalog?.backupDefaults.orEmpty()
 
 internal fun AppState.configFields(): List<ScriptField> = scriptCatalog?.fields.orEmpty().filterNot {
-    it.secret || it.key.endsWith("_user") || it.key.endsWith("_url") || it.key in setOf("remote_type", "user", "Output_path", "Backup_suffix")
+    !ScriptPreferences.editable(it.key) || it.secret || it.key.endsWith("_user") || it.key.endsWith("_url") || it.key in setOf("remote_type", "user", "Output_path", "Backup_suffix")
 }.filter { it.key in configDefaults() || it.key in draft?.script?.config.orEmpty() }
 
 internal fun fieldValue(state: AppState, field: ScriptField): String = state.draft?.script?.config?.get(field.key) ?: state.configDefaults()[field.key].orEmpty()
 internal fun fieldSummary(field: ScriptField, value: String): String {
-    field.options.firstOrNull { it.firstOrNull() == value }?.getOrNull(1)?.let { return it }
+    field.options.firstOrNull { it.firstOrNull() == value }?.getOrNull(1)?.let { return settingOption(it) }
     if (value.isBlank()) return "未设置"
     val lines = value.lines().filter { it.isNotBlank() && !it.trimStart().startsWith('#') }
     return if (value.contains('\n')) "${lines.size} 项" else value.take(70)
@@ -39,12 +39,12 @@ internal fun fieldSummary(field: ScriptField, value: String): String {
                 ArrowPreference("用户与来源", summary = if (spec.selectedApps.isNotEmpty()) "${spec.selectedApps.size} 个应用 · ${spec.selectedApps.map { it.userId }.distinct().size} 个用户" else "用户 ${spec.userId}", onClick = { navigate(Route.ConfigSection(ConfigGroup.TARGET)) })
                 if (spec.command == ScriptCommand.BACKUP_FOLDERS) ArrowPreference("文件夹", summary = spec.config["Custom_path"]?.lines()?.count { it.isNotBlank() }?.let { "$it 项" } ?: "未选择",
                     onClick = { navigate(Route.ConfigField("Custom_path")) })
-                if (spec.command != ScriptCommand.BACKUP_FOLDERS && s.configFields().any { configGroup(it.key) == ConfigGroup.CONTENT }) ArrowPreference("数据内容", summary = "应用数据、通信记录与关联目录", onClick = { navigate(Route.ConfigSection(ConfigGroup.CONTENT)) })
+                if (spec.command != ScriptCommand.BACKUP_FOLDERS && s.configFields().any { configGroup(it.key) == ConfigGroup.CONTENT }) ArrowPreference("数据内容", onClick = { navigate(Route.ConfigSection(ConfigGroup.CONTENT)) })
                 if (spec.command.restore) ArrowPreference("恢复前副本", summary = if (draft.safetyCopy) "已开启" else "本次关闭", onClick = { navigate(Route.ConfigSection(ConfigGroup.SAFETY)) })
             } }
             item { SectionLabel("其他选项") }
             item { Card(Modifier.fillMaxWidth()) {
-                ArrowPreference("高级设置", summary = "压缩、传输、名单、执行与日志", onClick = { navigate(Route.AdvancedConfig) })
+                ArrowPreference("高级设置", onClick = { navigate(Route.AdvancedConfig) })
             } }
         }
     }
@@ -56,7 +56,7 @@ internal fun fieldSummary(field: ScriptField, value: String): String {
         notices(s, vm)
         item { Card(Modifier.fillMaxWidth()) {
             ConfigGroup.entries.filter { it in groups }.forEach { group ->
-                ArrowPreference(group.title, summary = group.summary, onClick = { navigate(Route.ConfigSection(group)) })
+                ArrowPreference(group.title, startAction = { LeadingIcon(group.icon()) }, onClick = { navigate(Route.ConfigSection(group)) })
             }
         } }
     }

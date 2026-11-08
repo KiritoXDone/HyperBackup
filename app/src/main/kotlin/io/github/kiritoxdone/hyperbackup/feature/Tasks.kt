@@ -21,7 +21,7 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
         notices(s, vm)
         item { PrimaryAction("查询并核对任务", !s.busy && s.capabilities != null, vm::refreshTasks) }
         if (s.tasks.isEmpty()) item { InfoCard("还没有任务", "任务接受后会持久记录。返回或关闭页面不会创建第二个作业。") }
-        items(s.tasks, key = { it.id }) { task -> Card { ArrowPreference("${task.plan.draft.operation.label()} · ${task.state.label()}",
+        items(s.tasks, key = { it.id }) { task -> Card { ArrowPreference("${task.plan.draft.script?.command?.label ?: task.plan.draft.operation.label()} · ${task.state.label()}",
             summary = "${date(task.startedAt)} · ${task.items.size} 项", onClick = { navigate(Route.Task(task.id)) }) } }
     }
 }
@@ -41,7 +41,7 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
         notices(s, vm)
         if (task == null) item { InfoCard("正在确认任务状态", "先连接 Root 并查询历史记录，保持原 taskId，不重新提交恢复。")
             TextButton("查询任务", vm::refreshTasks, enabled = !s.busy && s.capabilities != null) } else {
-            item { InfoCard("${task.plan.draft.operation.label()}${task.state.label()}",
+            item { InfoCard("${task.plan.draft.script?.command?.label ?: task.plan.draft.operation.label()}${task.state.label()}",
                 "${date(task.startedAt)}\n项目进度 ${task.items.count { it.outcome !in setOf(Outcome.PENDING, Outcome.RUNNING) }}/${task.items.size}") }
             if (task.error.isNotEmpty()) item { InfoCard("任务说明", friendlyError(task.error)) }
             task.editor?.let { editor -> item { PrimaryAction("打开引擎选择与账号映射", !s.busy) { navigate(Route.Editor(editor.taskId)) } } }

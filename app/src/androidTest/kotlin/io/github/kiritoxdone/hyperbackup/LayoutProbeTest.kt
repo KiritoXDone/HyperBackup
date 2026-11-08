@@ -15,9 +15,9 @@ import org.junit.runner.RunWith
 @Keep
 @RunWith(AndroidJUnit4::class)
 class LayoutProbeTest {
-    @Test fun mainTabsAndLocationDialog() = withUiTestHost { device ->
+    @Test(timeout = 180_000) fun mainTabsAndLocationDialog() = withUiTestHost { device ->
         assertNotNull(device.wait(Until.findObject(By.text("首页")), 10000))
-        listOf("应用" to "选择", "备份库" to "备份集", "设置" to "主题").forEach { (label, content) ->
+        listOf("应用" to "用户应用", "备份库" to "备份集", "设置" to "备份默认值").forEach { (label, content) ->
             val node = device.findObjects(By.text(label)).last()
             println("TAB $label bounds=${node.visibleBounds}")
             node.click()
@@ -26,12 +26,12 @@ class LayoutProbeTest {
                 assertFalse("Root card leaked to $label", device.hasObject(By.text(status)))
             }
         }
-        assertNotNull(device.wait(Until.findObject(By.text("主题")), 5000))
+        device.textOnPage("主题")
         assertFalse(device.hasObject(By.text("浅色")))
-        device.findObject(By.text("主题")).click()
+        device.textOnPage("主题").click()
         assertNotNull(device.wait(Until.findObject(By.text("浅色")), 5000))
         device.pressBack()
-        device.findObject(By.text("关于")).click()
+        device.textOnPage("关于").click()
         assertNotNull(device.wait(Until.findObject(By.text("项目主页")), 5000))
         assertNotNull(device.findObject(By.text("问题反馈")))
         device.pressBack()

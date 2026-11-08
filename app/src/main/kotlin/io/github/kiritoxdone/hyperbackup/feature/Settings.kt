@@ -21,22 +21,32 @@ import io.github.kiritoxdone.hyperbackup.domain.*
 import io.github.kiritoxdone.hyperbackup.ui.*
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.*
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.*
 
 @Composable fun SettingsPage(s: AppState, vm: AppViewModel, padding: PaddingValues, navigate: (Route) -> Unit) {
     val context = LocalContext.current
     val themes = listOf("system", "light", "dark")
     PageList(padding) {
-        notices(s, vm)
-        item { SectionLabel("备份") }
+        item { SectionLabel("备份与恢复") }
         item { Card(Modifier.fillMaxWidth()) {
-            ArrowPreference("备份位置", summary = s.destinations.find { it.id == s.destinationId }?.name, onClick = { navigate(Route.Locations) })
+            ArrowPreference("备份位置", summary = s.destinations.find { it.id == s.destinationId }?.name,
+                startAction = { LeadingIcon(MiuixIcons.Folder) }, onClick = { navigate(Route.Locations) })
+            SettingsGroup.entries.forEach { group ->
+                ArrowPreference(group.title, startAction = { LeadingIcon(group.icon()) }, onClick = { navigate(Route.Defaults(group)) })
+            }
         } }
         item { SectionLabel("应用") }
         item { Card(Modifier.fillMaxWidth()) {
             OverlaySpinnerPreference(items = listOf(DropdownItem("跟随系统"), DropdownItem("浅色"), DropdownItem("深色")),
-                selectedIndex = themes.indexOf(s.theme).coerceAtLeast(0), title = "主题", onSelectedIndexChange = { vm.theme(themes[it]) })
-            ArrowPreference("通知", onClick = { context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)) })
-            ArrowPreference("关于", summary = BuildConfig.VERSION_NAME, onClick = { navigate(Route.About) })
+                selectedIndex = themes.indexOf(s.theme).coerceAtLeast(0), title = "主题", startAction = { LeadingIcon(MiuixIcons.Theme) },
+                onSelectedIndexChange = { vm.theme(themes[it]) })
+            ArrowPreference("应用行为", startAction = { LeadingIcon(MiuixIcons.Settings) }, onClick = { navigate(Route.AppBehavior) })
+            ArrowPreference("配置管理", startAction = { LeadingIcon(MiuixIcons.Import) }, onClick = { navigate(Route.SettingsTransfer) })
+            ArrowPreference("通知", startAction = { LeadingIcon(MiuixIcons.Notes) }, onClick = {
+                context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
+            })
+            ArrowPreference("关于", summary = BuildConfig.VERSION_NAME, startAction = { LeadingIcon(MiuixIcons.Info) }, onClick = { navigate(Route.About) })
         } }
     }
 }

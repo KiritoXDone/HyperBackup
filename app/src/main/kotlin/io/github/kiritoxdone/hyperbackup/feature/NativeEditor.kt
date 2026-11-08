@@ -32,7 +32,6 @@ import top.yukonga.miuix.kmp.preference.*
     val visible = editor.rows.filter { it.label.contains(query, true) || it.packageName.contains(query, true) }
     PageList(padding) {
         notices(s, vm)
-        item { InfoCard(if (editor.authSetup) "重新填写连接凭据" else "引擎选择确认", "选择与保存由固定版原生接口校验。此页面不启动或安装原 SpeedBackup。") }
         if (editor.authSetup) {
             items(editor.fields, key = { it.key }) { field ->
                 TextField(credentials[field.key].orEmpty(), { text -> credentials = credentials + (field.key to text) }, Modifier.fillMaxWidth(),
@@ -58,7 +57,7 @@ import top.yukonga.miuix.kmp.preference.*
                 }
             }
             if (mapsSelected && sourceRows.isNotEmpty()) {
-                item { InfoCard("Maps Timeline 账号映射", "普通 Maps 应用数据与时间轴侧车分别处理。选择会绑定到当前备份和目标用户，原引擎在写入前重新验证账号。") }
+                item { SectionLabel("Maps 时间轴") }
                 item { Card {
                     listOf("match" to "只恢复匹配的当前账号", "account" to "指定同一账号", "cross" to "一个来源映射到目标账号", "merge" to "多个来源合并到目标账号").forEach { (key, label) ->
                         RadioButtonPreference(label, timelineMode == key, { timelineMode = key; sources = emptyList(); target = "" })

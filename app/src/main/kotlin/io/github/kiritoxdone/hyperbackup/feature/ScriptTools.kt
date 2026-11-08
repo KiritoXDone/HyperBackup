@@ -15,10 +15,9 @@ import top.yukonga.miuix.kmp.preference.*
 @Composable fun ScriptToolsPage(s: AppState, vm: AppViewModel, padding: PaddingValues, navigate: (Route) -> Unit) {
     PageList(padding) {
         notices(s, vm)
-        item { SectionLabel("按用途选择") }
         item { Card(Modifier.fillMaxWidth()) {
             ToolGroup.entries.forEach { group ->
-                ArrowPreference(group.title, summary = group.summary, onClick = { navigate(Route.ToolsInGroup(group)) })
+                ArrowPreference(group.title, startAction = { LeadingIcon(group.icon()) }, onClick = { navigate(Route.ToolsInGroup(group)) })
             }
         } }
     }

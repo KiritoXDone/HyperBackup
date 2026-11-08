@@ -5,3 +5,8 @@
 # The test runner also links Kotlin facade classes through the target APK.
 -keep class kotlin.** { *; }
 -keep class kotlinx.coroutines.** { *; }
+# Settings instrumentation reads/restores the same DataStore after UI edits.
+-keep class io.github.kiritoxdone.hyperbackup.data.Preferences { public *; }
+-keepclassmembers class io.github.kiritoxdone.hyperbackup.HyperBackupApp {
+    public io.github.kiritoxdone.hyperbackup.data.Preferences getPreferences();
+}

@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.luminance
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kiritoxdone.hyperbackup.feature.AppNavigation
+import io.github.kiritoxdone.hyperbackup.domain.TaskState
+import android.view.WindowManager
 import io.github.kiritoxdone.hyperbackup.ui.HyperTheme
 
 class MainActivity : ComponentActivity() {
@@ -24,10 +26,18 @@ class MainActivity : ComponentActivity() {
             val state by model.state.collectAsStateWithLifecycle()
             HyperTheme(state.theme) {
                 val lightBars = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface.luminance() > 0.5f
-                SideEffect {
+                DisposableEffect(lightBars) {
                     WindowCompat.getInsetsController(window, window.decorView).apply {
                         isAppearanceLightStatusBars = lightBars; isAppearanceLightNavigationBars = lightBars
                     }
+                    onDispose { }
+                }
+                val active = state.tasks.any { it.state in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED) }
+                val keepScreen = (BuildConfig.DEBUG && intent.getBooleanExtra("testKeepScreenOn", false)) || (active && state.behavior.keepScreenOnDuringTask)
+                DisposableEffect(keepScreen) {
+                    if (keepScreen) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    onDispose { }
                 }
                 AppNavigation(model, state, intent.getStringExtra("taskId"))
             }

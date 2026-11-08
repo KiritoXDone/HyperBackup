@@ -7,6 +7,7 @@ class BackupSession(private val gateway: BackupGateway, private val dao: BackupD
     companion object {
         fun create(context: android.content.Context, gateway: BackupGateway) = BackupSession(gateway, BackupDatabase.open(context).dao(), CredentialVault())
     }
+    val connected: Boolean get() = gateway.isConnected()
     suspend fun destinations() = dao.destinations().map { Wire.json.decodeFromString<Destination>(it.json) }
     suspend fun connect(): Capabilities {
         gateway.connect()

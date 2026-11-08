@@ -28,7 +28,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
                 val names = if (item.group) selected.joinToString("、") { key -> s.apps.find { it.key == key }?.label ?: key.packageName } else ""
                 InfoCard(title, "$names\n${if (plan.draft.operation == Operation.BACKUP) "来源" else "目标"}用户 ${item.app.userId}\n${item.parts.joinToString { it.label() }}".trim())
             }
-            item { PrimaryAction(if (s.pendingSubmission) "正在确认是否已启动" else if (plan.draft.operation == Operation.DELETE) "确认永久删除" else "开始${plan.draft.operation.label()}",
+            item { PrimaryAction(if (s.pendingSubmission) "正在确认是否已启动" else if (plan.draft.operation == Operation.DELETE) "确认永久删除" else "开始",
                 !s.busy && !s.pendingSubmission && plan.blockers.isEmpty() && s.tasks.none { it.state in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED, TaskState.NEEDS_RECONCILIATION) }) { vm.submit(done) } }
             if (s.pendingSubmission) item { TextButton("查询原任务状态", vm::refreshTasks, enabled = !s.busy) }
         }

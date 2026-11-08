@@ -10,6 +10,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Backup
+import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import androidx.compose.ui.unit.dp
 import io.github.kiritoxdone.hyperbackup.*
@@ -34,7 +35,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
         item { Search(query, { query = it }, "搜索备份或应用") }
         item { Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (s.repository == null) "备份集" else "备份集 · ${groups.size}", Modifier.weight(1f), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-            InlineAction("刷新", !s.busy && s.capabilities != null && destination != null, vm::scan)
+            ActionIcon(MiuixIcons.Refresh, "刷新备份库", !s.busy && s.capabilities != null && destination != null, vm::scan)
         } }
         if (groups.isEmpty()) item { EmptyContent(MiuixIcons.Backup, if (query.isNotEmpty()) "没有匹配的备份" else "暂无备份集",
             action = if (destination == null) "添加位置" else null, onAction = { navigate(Route.AddLocation) }) }

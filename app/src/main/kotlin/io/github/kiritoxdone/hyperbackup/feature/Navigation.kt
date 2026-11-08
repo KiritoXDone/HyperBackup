@@ -41,6 +41,10 @@ import top.yukonga.miuix.kmp.window.WindowDialog
     @Serializable data object Runtime : Route
     @Serializable data object License : Route
     @Serializable data object OpenSource : Route
+    @Serializable data class Defaults(val group: SettingsGroup) : Route
+    @Serializable data class DefaultField(val key: String, val profile: ScriptProfile?) : Route
+    @Serializable data object AppBehavior : Route
+    @Serializable data object SettingsTransfer : Route
     @Serializable data object About : Route
 }
 
@@ -91,13 +95,13 @@ import top.yukonga.miuix.kmp.window.WindowDialog
         }
         entry<Route.AdvancedConfig> { PageShell("高级设置", back) { AdvancedConfigPage(state, vm, it, ::push) } }
         entry<Route.ConfigSection> { route -> PageShell(route.group.title, back) { ConfigSectionPage(state, vm, it, route.group, ::push) } }
-        entry<Route.ConfigField> { route -> PageShell(state.configFields().find { it.key == route.key }?.label ?: "编辑选项", back) { ConfigFieldPage(state, vm, it, route.key, back) } }
+        entry<Route.ConfigField> { route -> PageShell(state.configFields().find { it.key == route.key }?.let(::settingLabel) ?: "编辑选项", back) { ConfigFieldPage(state, vm, it, route.key, back) } }
         entry<Route.ConfigLocation> { route -> PageShell(if (route.safety) "副本保存位置" else "选择位置", back) { ConfigLocationPage(state, vm, it, route.safety, back) } }
-        entry<Route.Confirm> { PageShell("确认${state.plan?.draft?.operation?.label().orEmpty()}", back) { ConfirmPage(state, vm, it) { id ->
+        entry<Route.Confirm> { PageShell("确认${(state.plan?.draft?.script?.command?.label ?: state.plan?.draft?.operation?.label()).orEmpty()}", back) { ConfirmPage(state, vm, it) { id ->
             while (backStack.size > 1) backStack.removeLastOrNull()
             push(Route.Task(id))
         } } }
-        entry<Route.Editor> { route -> PageShell("引擎选择", back) { NativeEditorPage(state, vm, it, route.taskId, back) } }
+        entry<Route.Editor> { route -> PageShell("选择内容", back) { NativeEditorPage(state, vm, it, route.taskId, back) } }
         entry<Route.Tasks> { PageShell("任务中心", back) { TasksPage(state, vm, it, ::push) } }
         entry<Route.Task> { route -> PageShell("任务详情", back) { TaskPage(state, vm, it, route.id, ::push) } }
         entry<Route.Batch> { route -> PageShell("备份批次", back) { BatchPage(state, vm, it, route.id, ::push) } }
@@ -107,6 +111,12 @@ import top.yukonga.miuix.kmp.window.WindowDialog
         entry<Route.Tools> { PageShell("高级操作", back) { ScriptToolsPage(state, vm, it, ::push) } }
         entry<Route.License> { PageShell("许可证", back) { LicensePage(it) } }
         entry<Route.OpenSource> { PageShell("开源组件", back) { OpenSourcePage(it) } }
+        entry<Route.Defaults> { route -> PageShell(route.group.title, back) { EngineSettingsPage(state, vm, it, route.group, ::push) } }
+        entry<Route.DefaultField> { route -> PageShell(state.scriptCatalog?.fields?.find { it.key == route.key }?.let(::settingLabel) ?: "编辑选项", back) {
+            DefaultFieldPage(state, vm, it, route.key, route.profile, back)
+        } }
+        entry<Route.AppBehavior> { PageShell("应用行为", back) { AppBehaviorPage(state, vm, it) } }
+        entry<Route.SettingsTransfer> { PageShell("配置管理", back) { SettingsTransferPage(state, vm, it) } }
         entry<Route.About> { PageShell("关于", back) { AboutPage(it, ::push) } }
     }
     val missingLocation = state.error == "请先添加备份位置"
@@ -126,9 +136,12 @@ import top.yukonga.miuix.kmp.window.WindowDialog
     actions: @Composable RowScope.() -> Unit = {}, content: @Composable (PaddingValues) -> Unit) {
     val scroll = MiuixScrollBehavior()
     Scaffold(Modifier.fillMaxSize().nestedScroll(scroll.nestedScrollConnection).imePadding(),
-        topBar = { TopAppBar(title, scrollBehavior = scroll, navigationIcon = {
-            if (back != null) IconButton(onClick = back) { Icon(MiuixIcons.Back, "返回") }
-        }, actions = actions) }, bottomBar = bottom, content = content)
+        topBar = {
+            if (back == null) TopAppBar(title, scrollBehavior = scroll, actions = actions)
+            else SmallTopAppBar(title, scrollBehavior = scroll, navigationIcon = {
+                ActionIcon(MiuixIcons.Back, "返回", onClick = back)
+            }, actions = actions)
+        }, bottomBar = bottom, content = content)
 }
 @Composable fun BottomAction(text: String, enabled: Boolean, action: () -> Unit) {
     Column(Modifier.navigationBarsPadding().padding(16.dp)) { PrimaryAction(text, enabled, action) }
