@@ -1,0 +1,400 @@
+{
+  "upstream": "4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5",
+  "capabilities": [
+    {
+      "id": "CAP-01",
+      "title": "普通及白名单系统应用；单个/批量；APK-only/数据；split APK",
+      "entry": "应用、备份选择",
+      "operations": [
+        "backup_apps",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-02",
+      "title": "CE/DE、外部 data/OBB/media、实际排除和空数据规则",
+      "entry": "数据组成、高级详情",
+      "operations": [
+        "backup_apps",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-03",
+      "title": "用户选择、主用户/分身、来源和目标隔离",
+      "entry": "用户选择、恢复确认",
+      "operations": [
+        "backup_apps",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-04",
+      "title": "应用列表搜索/筛选/勾选；注释和 !；自定义名单位置",
+      "entry": "应用、名单管理",
+      "operations": [
+        "inventory",
+        "backup_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-05",
+      "title": "黑名单两模式、预装白名单、system 白名单及优先级",
+      "entry": "设置→名单与排除",
+      "operations": [
+        "backup_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-06",
+      "title": "仅备份已更新应用；版本无法可靠比较时的中止",
+      "entry": "应用→高级操作",
+      "operations": [
+        "backup_updated"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-07",
+      "title": "本地/SMB/WebDAV 逐项及整批 fast-skip",
+      "entry": "更新已有备份集",
+      "operations": [
+        "backup_apps",
+        "backup_updated"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-08",
+      "title": "tar/zstd、等级/线程、小文件阈值/线程/大小提示、媒体 tar 规则",
+      "entry": "设置→压缩",
+      "operations": [
+        "backup_apps",
+        "backup_folders"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-09",
+      "title": "批量/单项恢复、仅恢复未安装应用、目标 UID/标签修复",
+      "entry": "备份库→恢复",
+      "operations": [
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-10",
+      "title": "Play 身份、安装版本策略、低 target SDK 选项、失败与未知75",
+      "entry": "恢复预检、安装选项",
+      "operations": [
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-11",
+      "title": "AppState snapshot/restore/verify；SSAID/权限/AppOps/特殊访问/电池/安装来源诊断",
+      "entry": "应用状态选项与结果",
+      "operations": [
+        "backup_apps",
+        "restore_app_state"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-12",
+      "title": "含 SSAID 应用筛选；含数据恢复与仅 AppState 恢复分开",
+      "entry": "备份库→状态操作",
+      "operations": [
+        "restore_ssaid_apps",
+        "restore_app_state"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-13",
+      "title": "Wi-Fi 单独/关联备份恢复、远端同步、失败保留",
+      "entry": "首页→其他数据",
+      "operations": [
+        "backup_wifi",
+        "restore_wifi"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-14",
+      "title": "SMS/MMS、通话记录；备份默认开/恢复默认关；合并与跳重；Provider/用户限制",
+      "entry": "首页→通信记录",
+      "operations": [
+        "backup_apps",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-15",
+      "title": "通信记录特定世代保留，不能混成通用版本策略",
+      "entry": "通信记录详情/维护",
+      "operations": [
+        "backup_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-16",
+      "title": "Maps Timeline sidecar、来源/目标账号选择、映射/合并、延后恢复与收尾重试",
+      "entry": "Maps 详情、恢复账号选择",
+      "operations": [
+        "backup_apps",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-17",
+      "title": "thanox/HMA-OSS 特殊系统路径、标签和重启提示",
+      "entry": "对应应用特殊数据",
+      "operations": [
+        "backup_apps",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-18",
+      "title": "自定义目录单独或关联备份；恢复清单；挂载排除和 /data/adb 限制",
+      "entry": "首页→文件夹",
+      "operations": [
+        "backup_folders",
+        "restore_folders"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-19",
+      "title": "本地输出路径、备份根后缀与日期变量",
+      "entry": "新建/更新集、位置设置",
+      "operations": [
+        "backup_apps",
+        "backup_folders"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-20",
+      "title": "SMB/WebDAV 各自地址/凭据/路径、传输验证及错误分类",
+      "entry": "位置管理",
+      "operations": [
+        "remote_health"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-21",
+      "title": "自动发现/扫描、服务身份跟踪、同设备换 IP、失败重选",
+      "entry": "位置管理→发现设备",
+      "operations": [
+        "smb_discover_apply",
+        "webdav_discover"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-22",
+      "title": "当前连接测试、SMB 主机/share、WebDAV 普通/高级扫描",
+      "entry": "位置管理→连接工具",
+      "operations": [
+        "smb_discover",
+        "webdav_discover_advanced",
+        "remote_health"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-23",
+      "title": "5 GiB 流式上下行测速及终止/失败处理",
+      "entry": "位置管理→测速",
+      "operations": [
+        "remote_speed"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-24",
+      "title": "直接流式备份、先本地后上传、上传后保留/删除、逐应用上传",
+      "entry": "备份传输选项",
+      "operations": [
+        "backup_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-25",
+      "title": "先下载后恢复、直接串流恢复、metadata bundle 前置检查",
+      "entry": "恢复方式",
+      "operations": [
+        "remote_restore_staged",
+        "remote_restore_stream"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-26",
+      "title": "单独上传已有应用/媒体/Wi-Fi 产物与 metadata",
+      "entry": "备份集→上传",
+      "operations": [
+        "upload_existing"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-27",
+      "title": "编辑远端备份、多选删除、远端未安装应用候选、本地孤儿清理",
+      "entry": "备份库→清理",
+      "operations": [
+        "remote_catalog",
+        "remote_cleanup"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-28",
+      "title": "统计、归档完整性、JSON检查、重生metadata、旧目录名转换",
+      "entry": "备份集→检查与维护",
+      "operations": [
+        "statistics",
+        "verify_archives",
+        "verify_metadata",
+        "rebuild_metadata",
+        "convert_names"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-29",
+      "title": "本地旧 app_details.json 转 AppState；远端 bundle-only 规则",
+      "entry": "打开脚本备份集",
+      "operations": [
+        "remote_catalog",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-30",
+      "title": "关闭页面接回、停止与收尾、实时/历史日志、通知、诊断包",
+      "entry": "任务中心、通知、诊断",
+      "operations": [],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-31",
+      "title": "应用稳定保护、取消/强停结果、网络和恢复 guard、失败收尾",
+      "entry": "引擎控制、结果页",
+      "operations": [
+        "backup_apps",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-32",
+      "title": "低电量策略、亮屏伪装、后台/通知设置",
+      "entry": "设置→执行辅助",
+      "operations": [
+        "backup_apps",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-33",
+      "title": "可选 SpeedBackup Server 完成后关机、30秒取消、资格条件",
+      "entry": "远端完成后动作",
+      "operations": [
+        "backup_apps",
+        "restore_apps"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-34",
+      "title": "配置字面值解析、保存/迁移/缺项修补、旧值和废弃字段语义",
+      "entry": "设置、升级检查",
+      "operations": [],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-35",
+      "title": "日志容量限制及清理，诊断归档的历史/失败保留",
+      "entry": "设置→日志与诊断",
+      "operations": [],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-36",
+      "title": "简繁语言、消息/日志语义与进度显示",
+      "entry": "设置→语言、任务日志",
+      "operations": [],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-37",
+      "title": "启动自检、版本/工具摘要/capability 一致性与报告",
+      "entry": "运行环境、诊断",
+      "operations": [],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CAP-38",
+      "title": "上游更新能力映射为已验证 HyperBackup APK 更新；版本检查/包验证/失败保护",
+      "entry": "关于→版本与更新",
+      "operations": [],
+      "status": "pending",
+      "evidence": []
+    }
+  ]
+}

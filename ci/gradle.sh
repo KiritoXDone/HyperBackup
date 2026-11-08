@@ -18,4 +18,19 @@ if [[ ! -x "$hb_gradle_dir/gradle-9.7.1/bin/gradle" ]]; then
     unzip -q "$hb_gradle_dir/gradle.zip" -d "$hb_gradle_dir"
     rm "$hb_gradle_dir/gradle.zip"
 fi
-exec "$hb_gradle_dir/gradle-9.7.1/bin/gradle" "$@"
+mkdir -p work
+hb_gradle_log="$(mktemp "$PWD/work/gradle-network.XXXXXX")"
+trap 'rm -f "$hb_gradle_log"' EXIT
+for hb_attempt in 1 2 3; do
+    set +e
+    "$hb_gradle_dir/gradle-9.7.1/bin/gradle" "$@" 2>&1 | tee "$hb_gradle_log"
+    hb_result=${PIPESTATUS[0]}
+    set -e
+    if [[ "$hb_result" == 0 ]]; then exit 0; fi
+    if [[ "$hb_attempt" == 3 ]] || ! grep -Eq 'Could not (resolve|download)' "$hb_gradle_log" || \
+        ! grep -Eq 'Received status code 50[234]|Read timed out|ConnectTimeoutException|Could not (GET|HEAD)' "$hb_gradle_log"; then
+        exit "$hb_result"
+    fi
+    echo "Dependency transport failed; retrying download (attempt $((hb_attempt + 1))/3)."
+    sleep 5
+done

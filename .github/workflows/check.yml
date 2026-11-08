@@ -1,8 +1,10 @@
 name: Check
 on:
   push:
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 concurrency:
@@ -41,6 +43,8 @@ jobs:
           python3 -m unittest discover -s engine/tests -v
           python3 ci/check_source.py
           python3 ci/upstream_audit.py
+          python3 ci/check_coverage.py
+          python3 -m unittest discover -s ci/tests -v
       - name: Build patched native host from pinned source
         if: steps.native-cache.outputs.cache-hit != 'true'
         env:
@@ -86,7 +90,7 @@ jobs:
       - name: Verify upstream and repository boundaries
         run: python3 ci/check_source.py
       - name: Unit contracts, archive attacks, transport failures, lint and APK
-        run: bash ci/gradle.sh :core:domain:test :core:engine:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --console=plain
+        run: bash ci/gradle.sh :core:domain:test :core:engine:testDebugUnitTest :app:lintDebug :app:lintRelease :app:assembleDebug :app:assembleRelease :app:assembleDebugAndroidTest --console=plain
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -94,6 +98,7 @@ jobs:
           path: |
             app/build/outputs/apk/
             app/build/reports/
+            app/build/outputs/mapping/
             core/domain/build/reports/tests/
             core/engine/build/reports/tests/
   real-storage:
@@ -178,7 +183,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: bash ci/gradle.sh -PciUi=true :app:connectedDebugAndroidTest --console=plain
+          script: bash ci/gradle.sh -PciUi=true -Pandroid.testInstrumentationRunnerArguments.displayScenarios=true :app:connectedDebugAndroidTest --console=plain
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -186,3 +191,20 @@ jobs:
           path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
+  required-checks:
+    if: always()
+    needs: [native-host, contracts-and-apk, real-storage, android-ui]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every scenario
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PYCODE'
+          import json, os
+          results = json.loads(os.environ['RESULTS'])
+          failed = {name: job['result'] for name, job in results.items() if job['result'] != 'success'}
+          if failed:
+              raise SystemExit(f'Required checks did not pass: {failed}')
+          print('All required checks passed')
+          PYCODE
