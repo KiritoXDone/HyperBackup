@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: check-${{ github.ref }}
+  group: check-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   native-host:
@@ -21,6 +21,10 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '15859902'
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - name: Install fixed native toolchain
         run: |
           sdkmanager 'ndk;30.0.16248370'
@@ -64,6 +68,10 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '15859902'
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - name: Install pinned Android SDK
         run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
       - name: Verify upstream and repository boundaries
@@ -100,6 +108,10 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '15859902'
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
       - name: Start isolated WebDAV and Samba fixtures
         run: |
@@ -141,6 +153,10 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '15859902'
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
       - name: Enable KVM
         run: |
