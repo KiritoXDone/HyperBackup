@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import tempfile
+import json
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('patch', ROOT / 'engine/patches/generate.py')
@@ -26,6 +28,18 @@ class PatchContract(unittest.TestCase):
     def test_source_drift_is_a_build_failure(self):
         with self.assertRaises(AssertionError):
             patch.generate(patch.SOURCE.read_text().replace('_backup_entry_event() {', '_backup_entry_event_v2() {'))
+
+    def test_defaults_exclude_template_comments_and_preserve_source_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            patch.main(directory)
+            root = Path(directory)
+            defaults = json.loads((root / 'config-defaults.json').read_text())
+            keys = set((root / 'config-keys.txt').read_text().splitlines())
+            self.assertTrue(set(defaults['backup']).issubset(keys))
+            self.assertIn('whitelist', defaults['backup'])
+            self.assertIn('system', defaults['backup'])
+            self.assertEqual('1', defaults['backup']['backup_messages'])
+            self.assertEqual('0', defaults['restore']['restore_messages'])
 
     def test_dispatch_contains_only_fixed_business_entries(self):
         text = (ROOT / 'engine/patches/bridge.sh').read_text()

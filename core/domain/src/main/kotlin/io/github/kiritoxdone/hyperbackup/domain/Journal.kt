@@ -75,7 +75,7 @@ class JobCoordinator(
         }
         journal.all().firstOrNull { it.requestId == request.requestId }?.let { error("REQUEST_ALREADY_USED:${it.id}") }
         check(active == null) { "TASK_BUSY" }
-        check(journal.all().none { it.state == TaskState.NEEDS_RECONCILIATION }) { "RECONCILIATION_REQUIRED" }
+        check(journal.all().none { it.state in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED, TaskState.NEEDS_RECONCILIATION) }) { "RECONCILIATION_REQUIRED" }
         PlanPolicy.ready(plan, clock())
         require(request.planId == plan.id && request.digest == plan.digest()) { "PLAN_DIGEST_MISMATCH" }
         val task = TaskSnapshot(id = request.taskId, requestId = request.requestId, plan = plan, digest = request.digest,
@@ -102,7 +102,12 @@ class JobCoordinator(
     fun status(id: String): TaskSnapshot = journal.read(id) ?: throw EngineFailure("TASK_NOT_FOUND")
     fun history(): List<TaskSnapshot> = journal.all()
     @Synchronized fun recordEvidence(id: String, evidence: List<String>): TaskSnapshot {
-        val task = status(id).copy(evidence = evidence); journal.write(task); return task
+        val old = status(id)
+        val task = if (active != id && old.state in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED)) {
+            old.copy(state = TaskState.NEEDS_RECONCILIATION, evidence = evidence, error = "EXECUTION_RECORD_INCOMPLETE",
+                items = old.items.map { if (it.outcome == Outcome.RUNNING) it.copy(outcome = Outcome.UNKNOWN) else it })
+        } else old.copy(evidence = evidence)
+        journal.write(task); return task
     }
 
     /** Explicit acknowledgment preserves UNKNOWN items; only clears the global reconciliation gate. */
@@ -154,13 +159,14 @@ class JobCoordinator(
                 error = (e as? EngineFailure)?.code ?: e.message?.take(160).orEmpty(),
                 items = t.items.map { if (it.outcome == Outcome.RUNNING) it.copy(outcome = if (it.potentiallyWritten) Outcome.UNKNOWN else Outcome.FAILED) else it }) }
         } finally {
-            try { if (begun) executor.finish(status(id)) } catch (e: Exception) {
-                mutate(id) { it.copy(state = TaskState.NEEDS_RECONCILIATION, error = "CLEANUP_UNCONFIRMED") }
-            }
-            mutate(id) { it.copy(finishedAt = clock(), items = it.items.map { item ->
-                if (item.outcome == Outcome.PENDING) item.copy(outcome = Outcome.CANCELLED, reason = "NOT_STARTED") else item
-            }) }
-            synchronized(this) { active = null }
+            try {
+                try { if (begun) executor.finish(status(id)) } catch (e: Exception) {
+                    mutate(id) { it.copy(state = TaskState.NEEDS_RECONCILIATION, error = "CLEANUP_UNCONFIRMED") }
+                }
+                mutate(id) { it.copy(finishedAt = clock(), items = it.items.map { item ->
+                    if (item.outcome == Outcome.PENDING) item.copy(outcome = Outcome.CANCELLED, reason = "NOT_STARTED") else item
+                }) }
+            } finally { synchronized(this) { active = null } }
         }
     }
 }

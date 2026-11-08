@@ -62,7 +62,8 @@ object Wire {
 @Serializable data class WriterClaim(val owner: String, val taskId: String, val bootId: String, val sessionId: String, val createdAt: Long = System.currentTimeMillis())
 @Serializable data class RecordRef(val batchId: String, val recordId: String, val digest: String)
 @Serializable data class PlanItem(val app: AppKey, val record: RecordRef? = null, val parts: Set<PartKind>, val expectedVersion: String? = null,
-    val scriptRoot: String? = null, val scriptDirectory: String? = null, val nativeMetadataHash: String? = null)
+    val scriptRoot: String? = null, val scriptDirectory: String? = null, val nativeMetadataHash: String? = null,
+    val group: Boolean = false)
 @Serializable data class Draft(
     val operation: Operation, val destinationId: String, val items: List<PlanItem>, val safetyCopy: Boolean = true,
     val safetyDestinationId: String = destinationId, val restoreSsaid: Boolean = false,
@@ -83,7 +84,7 @@ object Wire {
 @Serializable data class ItemResult(
     val app: AppKey, val outcome: Outcome, val phase: String = "PENDING", val reason: String = "",
     val parts: List<PartResult> = emptyList(), val record: RecordRef? = null, val safetyRecord: RecordRef? = null,
-    val potentiallyWritten: Boolean = false,
+    val potentiallyWritten: Boolean = false, val nativeBackupPath: String? = null, val safetyBackupPath: String? = null,
 )
 @Serializable data class TaskEvent(val sequence: Long, val item: Int, val phase: String, val reason: String, val timestamp: Long = System.currentTimeMillis())
 @Serializable data class TaskSnapshot(

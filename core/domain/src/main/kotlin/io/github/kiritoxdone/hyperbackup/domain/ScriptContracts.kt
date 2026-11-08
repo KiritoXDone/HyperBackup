@@ -23,6 +23,7 @@ import kotlinx.serialization.Serializable
     val command: ScriptCommand, val workingDirectory: String, val userId: Int,
     val config: Map<String, String> = emptyMap(), val selectedPackages: List<String> = emptyList(),
     val preserveExistingList: Boolean = false, val setMode: BackupSetMode = BackupSetMode.NEW, val existingSet: String = "",
+    val selectedApps: List<AppKey> = emptyList(), val associatedWifi: Boolean = true,
 )
 @Serializable data class ScriptField(val key: String, val label: String, val options: List<List<String>> = emptyList(), val secret: Boolean = false)
 @Serializable data class ScriptCatalog(val upstream: String = Wire.UPSTREAM, val commands: List<ScriptCommand> = ScriptCommand.entries, val fields: List<ScriptField>,

@@ -75,4 +75,30 @@ class JobCoordinatorTest {
         val result = owner.status(r.taskId)
         assertEquals(TaskState.CANCELLED, result.state); assertEquals(Outcome.SUCCEEDED, result.items[0].outcome); assertEquals(Outcome.CANCELLED, result.items[1].outcome)
     }
+    @Test fun cleanupJournalFailureStillReleasesTheActiveOwner() {
+        val disk = FileTaskJournal(temp.newFolder())
+        var failWrites = false
+        val journal = object : TaskJournal by disk {
+            override fun write(task: TaskSnapshot) {
+                if (failWrites) throw java.io.IOException("disk unavailable")
+                disk.write(task)
+            }
+        }
+        val pool = Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable).apply { uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { _, _ -> } }
+        }
+        val executor = object : ItemExecutor {
+            override fun begin(task: TaskSnapshot) {}
+            override fun execute(task: TaskSnapshot, index: Int, progress: (String, Boolean) -> Unit) = ItemResult(key, Outcome.SUCCEEDED)
+            override fun finish(task: TaskSnapshot) { failWrites = true; error("cleanup failed") }
+        }
+        val owner = JobCoordinator(journal, executor, "boot", "session", pool)
+        val p = plan(); val r = request(p)
+        owner.submit(r, p); pool.shutdown(); assertTrue(pool.awaitTermination(5, TimeUnit.SECONDS))
+        failWrites = false
+        disk.write(owner.status(r.taskId).copy(state = TaskState.NEEDS_RECONCILIATION))
+        // A stale active owner used to block explicit acknowledgment forever.
+        assertEquals(TaskState.FAILED, owner.acknowledge(r.taskId).state)
+    }
+
 }

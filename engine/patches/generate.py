@@ -22,6 +22,7 @@ def generate(source):
         'if [[ ${HYPERBACKUP_BRIDGE:-0} != 1 && -z ${SPEEDBACKUP_CONSOLE_DIR:-} && -n ${_sb_root:-}')
     source = replace_once(source, '# Keep the one-entry UI request private;',
         'if [[ ${HYPERBACKUP_BRIDGE:-0} = 1 ]]; then\n    . "$HYPERBACKUP_BRIDGE_LIBRARY" || exit 65\nfi\n# Keep the one-entry UI request private;')
+    source = replace_once(source, '\tbackup_wifi_enable=1\n', '\tbackup_wifi_enable=1\n    [[ ${HYPERBACKUP_BRIDGE:-0}:${HYPERBACKUP_ASSOCIATED_WIFI:-1} != 1:0 ]] || backup_wifi_enable=0\n')
     source = replace_once(source, '# A run-owned pointer, never an inherited/exported cleanup path.',
         '[[ ${HYPERBACKUP_BRIDGE:-0} != 1 ]] || _SPEEDBACKUP_WEBMENU_REQUEST=0\n# A run-owned pointer, never an inherited/exported cleanup path.')
     source = replace_once(source, 'tools_path="$MODDIR/tools"',
@@ -54,6 +55,15 @@ def generate(source):
         '_backup_entry_event() {\n    [[ ${HYPERBACKUP_BRIDGE:-0} != 1 ]] || _hb_event archive "${name2:-}" "${_SBB_KEY:-}" "${4:--}" "$1"\n')
     source = replace_once(source, '_speed_debug_normal_finish_pack() {\n',
         '_speed_debug_normal_finish_pack() {\n    [[ ${HYPERBACKUP_BRIDGE:-0} != 1 ]] || _hb_snapshot "${1:-0}"\n')
+    source = replace_once(source, '\t_speedbackup_run_tmpdir_log "TMPDIR_RUN_FINAL_CLEANUP_OK path=$_run"\n',
+        '''\t_speedbackup_run_tmpdir_log "TMPDIR_RUN_FINAL_CLEANUP_OK path=$_run"
+    [[ ${HYPERBACKUP_BRIDGE:-0} != 1 ]] || printf '1\\n' > "$HYPERBACKUP_JOB/cleanup"
+''')
+    source = replace_once(source, '\n_speed_debug_init\n_speed_debug_log "TMPDIR_RUN_INIT',
+        '''
+_speed_debug_init
+[[ ${HYPERBACKUP_BRIDGE:-0} != 1 ]] || printf '%s\\n' "${SPEEDBACKUP_RUN_TMPDIR:-}" > "$HYPERBACKUP_JOB/runtime-path"
+_speed_debug_log "TMPDIR_RUN_INIT''')
     source = replace_once(source, '\t_power_complete_offer "${1:-1}"\n}',
         '''\t_power_complete_offer "${1:-1}"
     [[ ${HYPERBACKUP_BRIDGE:-0} != 1 ]] || printf '%s\\n' "${_SPEEDBACKUP_NORMAL_FINISH_EXIT_FAST:-0}" > "$HYPERBACKUP_JOB/cleanup"
@@ -84,11 +94,12 @@ def main(output):
     for kind, function in [('backup', 'update_backup_settings_conf'), ('restore', 'update_Restore_settings_conf')]:
         start = pristine.index('\n' + function + '() {') + 1
         end = pristine.index('\n}\n', start) + 2
-        helpers = '_conf_print_raw() { :; }; _conf_write() { printf "%s\\0%s\\0" "$1" "$2"; };\n'
+        helpers = '_conf_print_raw() { :; }; printf() { :; }; _conf_write() { builtin printf "%s\\0%s\\0" "$1" "$2"; };\n'
         result = subprocess.run(['/bin/bash', '-c', helpers + pristine[start:end] + '\n' + function], env={'PATH': '/usr/bin:/bin'}, check=True, capture_output=True)
         tokens = result.stdout.decode().split('\0')[:-1]
         assert len(tokens) % 2 == 0
         defaults[kind] = dict(zip(tokens[::2], tokens[1::2]))
+        assert set(defaults[kind]).issubset(keys), 'Template emitted unknown configuration keys'
     (output / 'config-defaults.json').write_text(json.dumps(defaults, ensure_ascii=False, indent=2) + '\n')
     (output / 'source.sha256').write_text(hashlib.sha256(SOURCE.read_bytes()).hexdigest() + '\n')
 

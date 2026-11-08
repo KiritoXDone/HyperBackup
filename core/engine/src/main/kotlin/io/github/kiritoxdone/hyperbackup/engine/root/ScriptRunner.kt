@@ -27,8 +27,11 @@ class ScriptRunner(private val assets: RootAssets) {
             .redirectErrorStream(true).redirectOutput(File(job, "engine.log"))
         builder.environment()["HYPERBACKUP_OWNER_PID"] = android.os.Process.myPid().toString()
         builder.environment()["SPEEDBACKUP_NATIVE_EXE"] = assets.binary("speednative")
+        builder.environment()["HYPERBACKUP_ASSOCIATED_WIFI"] = if (spec.associatedWifi) "1" else "0"
         builder.environment()["PATH"] = "/system/bin:/system/xbin:/vendor/bin"
         File(config.parentFile, "appList.txt").takeIf { it.isFile }?.let { builder.environment()["HYPERBACKUP_APPLIST"] = it.path }
+        // Bootstrap can acquire guards or change execution settings before an item gate.
+        progress("UPSTREAM_STARTING", true)
         val process = builder.start(); running[taskId] = job
         editorProxy.allowedPackages[taskId] = spec.selectedPackages.toSet()
         val events = mutableListOf<List<String>>(); var offset = 0L; var editorId: String? = null
