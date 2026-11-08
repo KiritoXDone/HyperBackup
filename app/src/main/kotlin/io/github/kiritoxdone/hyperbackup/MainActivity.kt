@@ -8,6 +8,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.luminance
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kiritoxdone.hyperbackup.feature.AppNavigation
 import io.github.kiritoxdone.hyperbackup.ui.HyperTheme
@@ -20,7 +22,15 @@ class MainActivity : ComponentActivity() {
         if (android.os.Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         setContent {
             val state by model.state.collectAsStateWithLifecycle()
-            HyperTheme(state.theme) { AppNavigation(model, state, intent.getStringExtra("taskId")) }
+            HyperTheme(state.theme) {
+                val lightBars = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface.luminance() > 0.5f
+                SideEffect {
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = lightBars; isAppearanceLightNavigationBars = lightBars
+                    }
+                }
+                AppNavigation(model, state, intent.getStringExtra("taskId"))
+            }
         }
     }
 }

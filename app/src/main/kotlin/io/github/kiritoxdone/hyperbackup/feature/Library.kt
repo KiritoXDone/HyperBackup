@@ -5,6 +5,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Backup
+import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import androidx.compose.ui.unit.dp
 import io.github.kiritoxdone.hyperbackup.*
 import io.github.kiritoxdone.hyperbackup.domain.*
@@ -15,28 +21,57 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable fun LibraryPage(s: AppState, vm: AppViewModel, padding: PaddingValues, navigate: (Route) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
+    val destination = s.destinations.find { it.id == s.destinationId }
     val records = s.repository?.records.orEmpty().filter { it.app.label.contains(query, true) || it.app.key.packageName.contains(query, true) }
     val groups = records.groupBy { it.batchId }.toList()
     PageList(padding) {
-        notices(s, vm, navigate)
-        item { Card { ArrowPreference(s.destinations.find { it.id == s.destinationId }?.name ?: "添加备份位置", summary = s.destinations.find { it.id == s.destinationId }?.let { "${it.protocol} · ${it.address}" }, onClick = { navigate(Route.Locations) }) } }
-        item { PrimaryAction("重新扫描仓库", !s.busy && s.capabilities != null && s.destinationId != null, vm::scan) }
-        s.repository?.let { repo -> item { Text("${if (s.cached) "上次扫描结果（当前未核验在线状态）" else "清单已识别"} · ${date(repo.scannedAt)}\n${repo.records.size} 项；归档内容尚未逐项下载校验。", color = MiuixTheme.colorScheme.onSurfaceVariantSummary) } }
-        item { Search(query, { query = it }, "搜索应用备份") }
-        if (groups.isEmpty()) item { InfoCard("还没有备份清单", "选择位置并扫描。旧脚本与 DataBackup 格式不会自动导入。") }
-        items(groups, key = { it.first }) { (id, batch) ->
-            Card { ArrowPreference(if (batch.first().purpose == "PRE_RESTORE") "恢复前备份" else "应用备份", summary =
-                "${if (batch.first().createdAt == 0L) "原生备份集" else date(batch.first().createdAt)}\n${batch.size} 个应用 · ${if (batch.all { it.scriptRoot != null }) "容量未索引" else size(batch.sumOf { r -> r.parts.sumOf { it.bytes } })}\n${batch.first().origin.label} · ${batch.map { it.origin.userId }.distinct().joinToString { "用户 $it" }}",
-                onClick = { navigate(Route.Batch(id)) }) }
+        notices(s, vm)
+        item { Card(Modifier.fillMaxWidth()) {
+            ArrowPreference(destination?.name ?: "选择备份位置", summary = destination?.protocol?.name,
+                startAction = { Icon(MiuixIcons.Backup, null, Modifier.padding(end = 12.dp).size(26.dp)) },
+                onClick = { navigate(Route.Locations) })
+        } }
+        item { Search(query, { query = it }, "搜索备份或应用") }
+        item { Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(if (s.repository == null) "备份集" else "备份集 · ${groups.size}", Modifier.weight(1f), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            InlineAction("刷新", !s.busy && s.capabilities != null && destination != null, vm::scan)
+        } }
+        if (groups.isEmpty()) item { EmptyContent(MiuixIcons.Backup, if (query.isNotEmpty()) "没有匹配的备份" else "暂无备份集",
+            action = if (destination == null) "添加位置" else null, onAction = { navigate(Route.AddLocation) }) }
+        items(groups, key = { it.first }) { (id, batch) -> BackupSetRow(batch) { navigate(Route.Batch(id)) } }
+        s.repository?.let { repo -> item {
+            Text("${if (s.cached) "上次扫描" else "扫描时间"} · ${date(repo.scannedAt)}", Modifier.padding(horizontal = 16.dp),
+                style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+        } }
+        if (s.repository?.rejected?.isNotEmpty() == true) item { Text("${s.repository.rejected.size} 项不可用", Modifier.padding(horizontal = 16.dp), color = MiuixTheme.colorScheme.onSurfaceVariantSummary) }
+    }
+}
+@Composable private fun BackupSetRow(records: List<BackupRecord>, onClick: () -> Unit) {
+    val first = records.first()
+    val suffix = first.scriptRoot?.substringAfterLast('/')?.replace(Regex("^Backup_(?:zstd|tar)_\\d+_?"), "").orEmpty()
+    val title = if (first.purpose == "PRE_RESTORE") "恢复前副本" else suffix.takeUnless { it.isBlank() || it.startsWith("HB_") } ?: "应用备份"
+    Card(Modifier.fillMaxWidth(), onClick = onClick, showIndication = true, pressFeedbackType = PressFeedbackType.Sink) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, Modifier.weight(1f), style = MiuixTheme.textStyles.title3, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text("›", Modifier.padding(start = 12.dp), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                records.take(3).forEach { record -> Box(Modifier.size(32.dp)) { AppIcon(record.app, Modifier.size(32.dp)) } }
+                Text("${records.size} 个应用", Modifier.padding(start = 4.dp), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            }
+            val users = records.map { it.origin.userId }.distinct()
+            Text((if (users.all { it >= 0 }) users.joinToString { "用户 $it" } else "来源用户未知") +
+                if (first.createdAt > 0) " · ${date(first.createdAt)}" else " · ${first.batchId.take(8)}",
+                style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
         }
-        if (s.repository?.rejected?.isNotEmpty() == true) item { InfoCard("未提交或不可用条目", "${s.repository.rejected.size} 项未进入可恢复列表。扫描保留其证据，不自动清理。") }
     }
 }
 @Composable fun BatchPage(s: AppState, vm: AppViewModel, padding: PaddingValues, id: String, navigate: (Route) -> Unit) {
     val records = s.repository?.records.orEmpty().filter { it.batchId == id }
     PageList(padding) {
         notices(s, vm)
-        item { InfoCard("${records.size} 项已识别", "选择恢复的应用版本。每个应用的来源用户会在恢复设置中显示，目标用户需要明确选择。") }
+        item { Text("${records.size} 个应用", Modifier.padding(horizontal = 16.dp)) }
         items(records, key = { it.recordId }) { record -> Card {
             Row(Modifier.padding(16.dp)) {
                 Checkbox(androidx.compose.ui.state.ToggleableState(record.recordId in s.selectedRecords), { vm.toggleRecord(record.recordId) })
@@ -55,12 +90,12 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
     val record = s.repository?.records?.find { it.recordId == id }
     PageList(padding) {
         notices(s, vm)
-        if (record == null) item { InfoCard("请先连接原仓库", "当前索引中没有此版本。添加原备份位置并扫描，可重建清单。") } else {
+        if (record == null) item { InfoCard("备份未找到", "请重新扫描备份位置") } else {
             item { InfoCard(record.app.label, "${record.app.key.packageName}\n${date(record.createdAt)} · ${if (record.scriptRoot != null) "已识别，尚未完整校验" else record.completion.label()}\n来源 ${record.origin.label} / 用户 ${record.origin.userId}\n安装版本 ${record.app.versionCode ?: "未知"}") }
             items(record.parts, key = { it.kind }) { part -> InfoCard(part.kind.label(), "${part.status} · ${if (part.bytes == 0L && part.status == PartStatus.INCLUDED) "大小未索引" else size(part.bytes)}\n${part.reason}\n${part.sha256?.let { "SHA-256 $it" }.orEmpty()}") }
             item { PrimaryAction("选择此版本恢复", !s.busy) { vm.beginRecords(listOf(record), Operation.RESTORE); navigate(Route.Config) } }
             item { Card {
-                ArrowPreference("下载并校验归档", summary = "核验所选内容的 SHA-256 与归档结构", onClick = { vm.beginRecords(listOf(record), Operation.VERIFY); navigate(Route.Config) })
+                ArrowPreference("下载并校验归档", onClick = { vm.beginRecords(listOf(record), Operation.VERIFY); navigate(Route.Config) })
                 ArrowPreference("备份集维护", summary = "使用原引擎检查、修复和清理", onClick = { navigate(Route.Tools) })
             } }
         }

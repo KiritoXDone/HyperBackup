@@ -2,6 +2,12 @@ package io.github.kiritoxdone.hyperbackup.feature
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
@@ -17,20 +23,35 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.*
 
 @Composable fun SettingsPage(s: AppState, vm: AppViewModel, padding: PaddingValues, navigate: (Route) -> Unit) {
+    val context = LocalContext.current
+    val themes = listOf("system", "light", "dark")
     PageList(padding) {
-        notices(s, vm, navigate)
-        item { Card { ArrowPreference("备份位置管理", summary = "本地 / SMB / WebDAV", onClick = { navigate(Route.Locations) }) } }
-        item { Card {
-            listOf("system" to "跟随系统", "light" to "浅色", "dark" to "深色").forEach { (key, label) ->
-                RadioButtonPreference(title = label, selected = s.theme == key, onClick = { vm.theme(key) })
-            }
+        notices(s, vm)
+        item { SectionLabel("备份") }
+        item { Card(Modifier.fillMaxWidth()) {
+            ArrowPreference("备份位置", summary = s.destinations.find { it.id == s.destinationId }?.name, onClick = { navigate(Route.Locations) })
         } }
-        item { Card {
-            ArrowPreference("完整引擎功能", summary = "原生操作、配置、传输与维护", onClick = { navigate(Route.Tools) })
-            ArrowPreference("任务与诊断", summary = "查看阶段、分项结果和待核对任务", onClick = { navigate(Route.Tasks) })
-            ArrowPreference("关于与开源许可", summary = "HyperBackup ${BuildConfig.VERSION_NAME}", onClick = { navigate(Route.About) })
+        item { SectionLabel("应用") }
+        item { Card(Modifier.fillMaxWidth()) {
+            OverlaySpinnerPreference(items = listOf(DropdownItem("跟随系统"), DropdownItem("浅色"), DropdownItem("深色")),
+                selectedIndex = themes.indexOf(s.theme).coerceAtLeast(0), title = "主题", onSelectedIndexChange = { vm.theme(themes[it]) })
+            ArrowPreference("通知", onClick = { context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)) })
+            ArrowPreference("关于", summary = BuildConfig.VERSION_NAME, onClick = { navigate(Route.About) })
         } }
-        item { InfoCard("备份内容未加密", "连接密码由 Android Keystore 保护，密码不会写入备份清单。备份文件本身没有口令加密；请妥善保管存储位置。") }
+    }
+}
+@Composable fun RuntimePage(s: AppState, padding: PaddingValues) {
+    PageList(padding) {
+        item { SectionLabel("环境信息") }
+        item { InfoCard("Root 授权", when (s.connectionState) {
+            RootConnectionState.READY -> "已连接"
+            RootConnectionState.CHECKING -> "正在检查"
+            RootConnectionState.UNAVAILABLE -> "连接不可用，请在首页重新检查"
+            else -> "尚未检查，可在首页申请授权"
+        }) }
+        s.capabilities?.let { caps -> item { InfoCard("系统", "Android ${caps.androidVersion} · ${caps.abi}\n${caps.users.joinToString { it.name }}") } }
+        item { InfoCard("引擎版本", "backup_script v1117\n${Wire.UPSTREAM}") }
+        s.connectionError?.let { error -> item { InfoCard("诊断详情", error) } }
     }
 }
 @Composable fun LocationsPage(s: AppState, vm: AppViewModel, padding: PaddingValues, navigate: (Route) -> Unit) {
@@ -41,7 +62,6 @@ import top.yukonga.miuix.kmp.preference.*
                 selected = s.destinationId == d.id, onClick = { vm.selectDestination(d.id) }, enabled = !s.busy)
         } }
         item { PrimaryAction("添加位置", !s.busy) { navigate(Route.AddLocation) } }
-        item { InfoCard("连接原仓库", "重装应用后添加原路径并选择“连接已有仓库”，即可从清单重建索引。创建新仓库要求目录为空。") }
     }
 }
 @Composable fun AddLocationPage(s: AppState, vm: AppViewModel, padding: PaddingValues, done: () -> Unit) {
@@ -75,11 +95,43 @@ import top.yukonga.miuix.kmp.preference.*
         } }
     }
 }
-@Composable fun AboutPage(padding: PaddingValues) {
+@Composable fun AboutPage(padding: PaddingValues, navigate: (Route) -> Unit) {
+    val context = LocalContext.current
+    val icon = remember(context) { context.packageManager.getApplicationIcon(context.packageName).toBitmap(192, 192).asImageBitmap() }
+    fun open(path: String) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/KiritoXDone/HyperBackup$path"))) }
+    PageList(padding) {
+        item { Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(icon, null, Modifier.size(80.dp))
+            Text("HyperBackup", Modifier.padding(top = 16.dp), fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+            Text("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", Modifier.padding(top = 4.dp), color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurfaceVariantSummary)
+        } }
+        item { Card(Modifier.fillMaxWidth()) {
+            ArrowPreference("项目主页", summary = "KiritoXDone / HyperBackup", onClick = { open("") })
+            ArrowPreference("问题反馈", onClick = { open("/issues") })
+            ArrowPreference("发行版本", onClick = { open("/releases") })
+        } }
+        item { Card(Modifier.fillMaxWidth()) {
+            ArrowPreference("许可证", summary = "GPL-3.0-only", onClick = { navigate(Route.License) })
+            ArrowPreference("开源组件", onClick = { navigate(Route.OpenSource) })
+            ArrowPreference("运行环境", onClick = { navigate(Route.Runtime) })
+        } }
+    }
+}
+@Composable fun LicensePage(padding: PaddingValues) {
+    val context = LocalContext.current
+    val license = remember { context.assets.open("LICENSE.txt").bufferedReader().use { it.readText() } }
+    PageList(padding) { item { Text(license, Modifier.padding(horizontal = 12.dp)) } }
+}
+@Composable fun OpenSourcePage(padding: PaddingValues) {
     val context = LocalContext.current
     PageList(padding) {
-        item { InfoCard("HyperBackup ${BuildConfig.VERSION_NAME}", "独立 Android 应用\nAndroid 9+ · arm64 · Root\nGPL-3.0-only\nbackup_script v1117 / ${Wire.UPSTREAM.take(12)}\nMiuix 0.9.4 · libsu 6.0.0") }
-        item { InfoCard("核验范围", "归档校验不代表免登录或适用于所有 ROM。请先用可丢弃应用验证当前设备。应用不自动卸载目标、不强制降级，不会自动重放结果未知的恢复。") }
-        item { TextButton("源码、构建说明与开源许可", { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/KiritoXDone/HyperBackup"))) }) }
+        item { Card(Modifier.fillMaxWidth()) {
+            listOf(
+                Triple("backup_script", "v1117 · GPL-3.0-only", "https://github.com/YAWAsau/backup_script/tree/${Wire.UPSTREAM}"),
+                Triple("Miuix", "0.9.4 · Apache-2.0", "https://github.com/compose-miuix-ui/miuix"),
+                Triple("libsu", "6.0.0 · Apache-2.0", "https://github.com/topjohnwu/libsu"),
+                Triple("KernelSU", "状态卡设计参考 · GPL-3.0", "https://github.com/tiann/KernelSU/tree/0c0fdb960178fa12d80d6cbcfdcb6ad8be6a865d")
+            ).forEach { (name, version, url) -> ArrowPreference(name, summary = version, onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }) }
+        } }
     }
 }

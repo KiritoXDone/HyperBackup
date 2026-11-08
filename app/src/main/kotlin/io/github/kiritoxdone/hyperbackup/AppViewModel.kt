@@ -7,12 +7,15 @@ import io.github.kiritoxdone.hyperbackup.domain.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
+enum class RootConnectionState { UNCHECKED, CHECKING, READY, UNAVAILABLE }
+
 data class AppState(
     val capabilities: Capabilities? = null, val apps: List<AppInstance> = emptyList(), val user: Int = 0,
     val selectedApps: Set<AppKey> = emptySet(), val selectedRecords: Set<String> = emptySet(),
     val destinations: List<Destination> = emptyList(), val destinationId: String? = null,
     val repository: ScanResult? = null, val cached: Boolean = false, val tasks: List<TaskSnapshot> = emptyList(),
     val draft: Draft? = null, val plan: Plan? = null, val busy: Boolean = false, val error: String? = null,
+    val connectionState: RootConnectionState = RootConnectionState.UNCHECKED, val connectionError: String? = null,
     val theme: String = "system", val pendingSubmission: Boolean = false, val scriptCatalog: ScriptCatalog? = null,
 )
 
@@ -50,11 +53,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     fun connect() = action {
-        val caps = session.connect(); val catalog = session.scriptCatalog(); session.reconcileSubmissions()
-        mutable.update { it.copy(capabilities = caps, tasks = session.history(), pendingSubmission = false, scriptCatalog = catalog) }
-        val user = caps.users.firstOrNull { it.unlocked }?.id ?: 0
-        loadApps(user)
-        state.value.tasks.firstOrNull { it.state in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED) }?.let { TaskForegroundService.observe(app, it.id) }
+        mutable.update { it.copy(connectionState = RootConnectionState.CHECKING, connectionError = null) }
+        try {
+            val caps = session.connect(); val catalog = session.scriptCatalog(); session.reconcileSubmissions()
+            mutable.update { it.copy(capabilities = caps, tasks = session.history(), pendingSubmission = false, scriptCatalog = catalog,
+                connectionState = RootConnectionState.READY) }
+            val user = caps.users.firstOrNull { it.unlocked }?.id ?: 0
+            loadApps(user)
+            state.value.tasks.firstOrNull { it.state in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED) }?.let { TaskForegroundService.observe(app, it.id) }
+        } catch (e: Exception) {
+            mutable.update { it.copy(capabilities = null, connectionState = RootConnectionState.UNAVAILABLE, connectionError = e.message) }
+        }
     }
     private suspend fun loadApps(user: Int) { val apps = session.inventory(user); mutable.update { it.copy(apps = apps, user = user) } }
     fun selectUser(user: Int) = action { loadApps(user) }
@@ -80,7 +89,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun beginBackup() {
         val s = state.value; val id = s.destinationId ?: return clearError("请先添加备份位置")
         if (s.selectedApps.isEmpty()) return clearError("请先选择应用")
-        setDraft(Draft(Operation.BACKUP, id, s.selectedApps.map { PlanItem(it, parts = setOf(PartKind.APK, PartKind.CE, PartKind.DE)) }, script = ScriptSpec(ScriptCommand.BACKUP_APPS, "", s.user, selectedPackages = s.selectedApps.map { it.packageName })))
+        setDraft(ScriptPlanScope.backup(id, s.selectedApps, s.user))
     }
     fun beginRecords(records: List<BackupRecord>, operation: Operation) {
         val s = state.value; val id = s.destinationId ?: return

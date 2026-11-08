@@ -16,3 +16,6 @@ Apache Commons Compress and their transitive dependencies. See the pinned Gradle
 dependencies and upstream license metadata for exact artifacts and notices.
 
 Source: https://github.com/KiritoXDone/HyperBackup
+
+The home status card palette/layout references KernelSU v3.3.1 (GPL-3.0),
+commit 0c0fdb960178fa12d80d6cbcfdcb6ad8be6a865d, HomeMiuix.kt and WarningCard.kt.

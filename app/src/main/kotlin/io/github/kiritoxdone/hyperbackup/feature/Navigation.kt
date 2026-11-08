@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
@@ -16,12 +17,17 @@ import kotlinx.serialization.Serializable
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.nav.core.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowDialog
 
 @Serializable sealed interface Route : NavKey {
     @Serializable data object Main : Route
     @Serializable data object SelectApps : Route
     @Serializable data class AppDetail(val user: Int, val pkg: String) : Route
     @Serializable data object Config : Route
+    @Serializable data object AdvancedConfig : Route
+    @Serializable data class ConfigSection(val group: ConfigGroup) : Route
+    @Serializable data class ConfigField(val key: String) : Route
+    @Serializable data class ConfigLocation(val safety: Boolean) : Route
     @Serializable data object Confirm : Route
     @Serializable data object Locations : Route
     @Serializable data object AddLocation : Route
@@ -31,27 +37,33 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
     @Serializable data class Batch(val id: String) : Route
     @Serializable data class Record(val id: String) : Route
     @Serializable data object Tools : Route
+    @Serializable data class ToolsInGroup(val group: ToolGroup) : Route
+    @Serializable data object Runtime : Route
+    @Serializable data object License : Route
+    @Serializable data object OpenSource : Route
     @Serializable data object About : Route
 }
 
 @Composable fun AppNavigation(vm: AppViewModel, state: AppState, initialTask: String?) {
     val backStack = rememberNavBackStack<Route>(Route.Main)
+    val tabStates = rememberSaveableStateHolder()
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    fun push(route: Route) { if (backStack.lastOrNull() != route) backStack.add(route) }
+    fun push(route: Route) { vm.clearError(); if (backStack.lastOrNull() != route) backStack.add(route) }
     val back = { if (backStack.size > 1) backStack.removeLastOrNull(); Unit }
     LaunchedEffect(initialTask) { initialTask?.let { id -> runCatching { Wire.uuid(id) }.onSuccess { push(Route.Task(id)) } } }
     NavDisplay(backStack = backStack, onBack = back) {
         entry<Route.Main> {
+            tabStates.SaveableStateProvider(tab) {
             PageShell(listOf("备份", "应用", "备份库", "设置")[tab], bottom = {
                 NavigationBar {
                     listOf(MiuixIcons.Home, MiuixIcons.GridView, MiuixIcons.Backup, MiuixIcons.Settings).forEachIndexed { index, icon ->
-                        NavigationBarItem(tab == index, { tab = index }, icon, listOf("首页", "应用", "备份库", "设置")[index],
+                        NavigationBarItem(tab == index, { vm.clearError(); tab = index }, icon, listOf("首页", "应用", "备份库", "设置")[index],
                             colors = NavigationBarDefaults.navigationBarItemColors(selectedContentColor = MiuixTheme.colorScheme.onSurface,
-                                unselectedContentColor = MiuixTheme.colorScheme.onSurfaceVariantSummary))
+                                unselectedContentColor = MiuixTheme.colorScheme.onSurface))
                     }
                 }
             }, actions = {
-                IconButton(onClick = { push(Route.Tasks) }) { Icon(MiuixIcons.Recent, "任务中心") }
+                if (tab == 0) IconButton(onClick = { push(Route.Tasks) }) { Icon(MiuixIcons.Recent, "任务中心") }
             }) { padding ->
                 when (tab) {
                     0 -> HomePage(state, vm, padding, ::push, { tab = 2 })
@@ -61,6 +73,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
                 }
             }
         }
+            }
         entry<Route.SelectApps> {
             PageShell("选择应用", back, bottom = { BottomAction("下一步 · 已选 ${state.selectedApps.size}", state.selectedApps.isNotEmpty() && !state.busy) {
                 vm.beginBackup(); if (vm.state.value.draft != null) push(Route.Config)
@@ -71,7 +84,15 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
         }
         entry<Route.Locations> { PageShell("备份位置", back) { LocationsPage(state, vm, it, ::push) } }
         entry<Route.AddLocation> { PageShell("添加位置", back) { AddLocationPage(state, vm, it, back) } }
-        entry<Route.Config> { PageShell("${state.draft?.operation?.label().orEmpty()}设置", back) { ConfigPage(state, vm, it) { push(Route.Confirm) } } }
+        entry<Route.Config> {
+            PageShell(state.draft?.script?.command?.label ?: "操作设置", back, bottom = {
+                BottomAction("检查并继续", state.draft != null && state.capabilities != null && !state.busy) { vm.preflight { push(Route.Confirm) } }
+            }) { ConfigPage(state, vm, it, ::push) }
+        }
+        entry<Route.AdvancedConfig> { PageShell("高级设置", back) { AdvancedConfigPage(state, vm, it, ::push) } }
+        entry<Route.ConfigSection> { route -> PageShell(route.group.title, back) { ConfigSectionPage(state, vm, it, route.group, ::push) } }
+        entry<Route.ConfigField> { route -> PageShell(state.configFields().find { it.key == route.key }?.label ?: "编辑选项", back) { ConfigFieldPage(state, vm, it, route.key, back) } }
+        entry<Route.ConfigLocation> { route -> PageShell(if (route.safety) "副本保存位置" else "选择位置", back) { ConfigLocationPage(state, vm, it, route.safety, back) } }
         entry<Route.Confirm> { PageShell("确认${state.plan?.draft?.operation?.label().orEmpty()}", back) { ConfirmPage(state, vm, it) { id ->
             while (backStack.size > 1) backStack.removeLastOrNull()
             push(Route.Task(id))
@@ -81,15 +102,30 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
         entry<Route.Task> { route -> PageShell("任务详情", back) { TaskPage(state, vm, it, route.id, ::push) } }
         entry<Route.Batch> { route -> PageShell("备份批次", back) { BatchPage(state, vm, it, route.id, ::push) } }
         entry<Route.Record> { route -> PageShell("备份版本", back) { RecordPage(state, vm, it, route.id, ::push) } }
-        entry<Route.Tools> { PageShell("引擎功能", back) { ScriptToolsPage(state, vm, it, ::push) } }
-        entry<Route.About> { PageShell("关于 HyperBackup", back) { AboutPage(it) } }
+        entry<Route.ToolsInGroup> { route -> PageShell(route.group.title, back) { ToolGroupPage(state, vm, it, route.group, ::push) } }
+        entry<Route.Runtime> { PageShell("运行环境", back) { RuntimePage(state, it) } }
+        entry<Route.Tools> { PageShell("高级操作", back) { ScriptToolsPage(state, vm, it, ::push) } }
+        entry<Route.License> { PageShell("许可证", back) { LicensePage(it) } }
+        entry<Route.OpenSource> { PageShell("开源组件", back) { OpenSourcePage(it) } }
+        entry<Route.About> { PageShell("关于", back) { AboutPage(it, ::push) } }
     }
+    val missingLocation = state.error == "请先添加备份位置"
+    WindowDialog(show = state.error != null, title = if (missingLocation) "未添加备份位置" else "操作未完成",
+        summary = if (missingLocation) null else state.error?.let(::friendlyError)?.take(240), onDismissRequest = { vm.clearError() }) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (missingLocation) {
+                TextButton("取消", { vm.clearError() }, Modifier.weight(1f))
+                TextButton("添加位置", { vm.clearError(); push(Route.AddLocation) }, Modifier.weight(1f), colors = ButtonDefaults.textButtonColorsPrimary())
+            } else TextButton("确定", { vm.clearError() }, Modifier.fillMaxWidth(), colors = ButtonDefaults.textButtonColorsPrimary())
+        }
+    }
+
 }
 
 @Composable fun PageShell(title: String, back: (() -> Unit)? = null, bottom: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {}, content: @Composable (PaddingValues) -> Unit) {
     val scroll = MiuixScrollBehavior()
-    Scaffold(Modifier.nestedScroll(scroll.nestedScrollConnection).imePadding(),
+    Scaffold(Modifier.fillMaxSize().nestedScroll(scroll.nestedScrollConnection).imePadding(),
         topBar = { TopAppBar(title, scrollBehavior = scroll, navigationIcon = {
             if (back != null) IconButton(onClick = back) { Icon(MiuixIcons.Back, "返回") }
         }, actions = actions) }, bottomBar = bottom, content = content)
@@ -97,14 +133,12 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable fun BottomAction(text: String, enabled: Boolean, action: () -> Unit) {
     Column(Modifier.navigationBarsPadding().padding(16.dp)) { PrimaryAction(text, enabled, action) }
 }
+@Suppress("UNUSED_PARAMETER")
 fun LazyListScope.notices(state: AppState, vm: AppViewModel, navigate: ((Route) -> Unit)? = null) {
-    if (state.busy) item("loading") { InfoCard("正在处理", "请稍候，提交后会先确认任务身份。") }
-    state.error?.let { error -> item("error") { Card { InfoCard("需要处理", friendlyError(error)); TextButton("收起", { vm.clearError() }) } } }
-    if (state.capabilities == null) item("root") { Card { InfoCard("Root 尚未连接", "授权后检查引擎、用户和可用应用。已缓存的备份清单仍可浏览。")
-        TextButton("授权并检查", vm::connect, enabled = !state.busy) } }
-    if (navigate != null) state.tasks.firstOrNull { it.state in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED) }?.let { task ->
-        item("active") { Card(onClick = { navigate(Route.Task(task.id)) }) { InfoCard("${task.plan.draft.operation.label()}${task.state.label()}", "点击回到同一任务 · 项目 ${task.items.count { it.outcome == Outcome.SUCCEEDED }}/${task.items.size}") } }
+    if (state.busy && state.connectionState != RootConnectionState.CHECKING) item("loading") {
+        Text("正在处理…", Modifier.padding(horizontal = 16.dp), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
     }
+
 }
 fun friendlyError(raw: String): String = when {
     raw.contains("ROOT_") -> "Root 未连接或授权失败。请在 Root 管理器中允许 HyperBackup，然后重新检查。\n$raw"

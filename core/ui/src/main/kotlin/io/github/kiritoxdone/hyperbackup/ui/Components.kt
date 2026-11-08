@@ -7,6 +7,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.*
 import io.github.kiritoxdone.hyperbackup.domain.*
@@ -18,27 +21,43 @@ import java.util.Date
     MiuixTheme(controller = controller, content = content)
 }
 @Composable fun PageList(padding: PaddingValues, content: LazyListScope.() -> Unit) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp,
-        top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    val direction = androidx.compose.ui.platform.LocalLayoutDirection.current
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val extra = ((maxWidth - 720.dp) / 2).coerceAtLeast(0.dp)
+        LazyColumn(Modifier.fillMaxSize().consumeWindowInsets(padding),
+            contentPadding = PaddingValues(
+                start = padding.calculateStartPadding(direction) + extra + 12.dp,
+                end = padding.calculateEndPadding(direction) + extra + 12.dp,
+                top = padding.calculateTopPadding() + 12.dp,
+                bottom = padding.calculateBottomPadding() + 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    }
+}
+@Composable fun SectionLabel(text: String) {
+    Text(text, Modifier.padding(start = 16.dp, top = 10.dp, bottom = 0.dp),
+        style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
 }
 @Composable fun InfoCard(title: String, description: String, modifier: Modifier = Modifier) {
-    Card(modifier.fillMaxWidth(), insideMargin = PaddingValues(20.dp)) {
+    Card(modifier.fillMaxWidth(), insideMargin = PaddingValues(16.dp)) {
         Text(title, style = MiuixTheme.textStyles.title3)
         if (description.isNotEmpty()) Text(description, Modifier.padding(top = 8.dp), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
     }
 }
-@Composable fun StatusCard(title: String, description: String, warning: Boolean = false, success: Boolean = false) {
-    val dark = androidx.compose.foundation.isSystemInDarkTheme()
-    val color = when { warning -> if (dark) Color(0xFF493823) else Color(0xFFFFEED5); success -> if (dark) Color(0xFF203F2C) else Color(0xFFDFF9E6); else -> MiuixTheme.colorScheme.secondaryContainer }
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.defaultColors(color = color), insideMargin = PaddingValues(22.dp)) {
-        Text(title, style = MiuixTheme.textStyles.title2)
-        Text(description, Modifier.padding(top = 8.dp), color = MiuixTheme.colorScheme.onSurface)
-    }
-}
 @Composable fun Search(value: String, onChange: (String) -> Unit, placeholder: String) {
-    SearchBar(inputField = { TextField(value, onChange, Modifier.fillMaxWidth(), label = placeholder, useLabelAsPlaceholder = true, singleLine = true) },
-        onExpandedChange = {}, insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 0.dp)) {}
+    InputField(query = value, onQueryChange = onChange, onSearch = {}, expanded = false, onExpandedChange = {},
+        modifier = Modifier.fillMaxWidth(), label = placeholder)
+}
+@Composable fun InlineAction(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+    TextButton(text, onClick, enabled = enabled, minHeight = 48.dp,
+        colors = ButtonDefaults.textButtonColors(color = Color.Transparent, disabledColor = Color.Transparent,
+            textColor = MiuixTheme.colorScheme.primary, disabledTextColor = MiuixTheme.colorScheme.disabledOnSecondaryVariant))
+}
+@Composable fun EmptyContent(icon: ImageVector, title: String, action: String? = null, onAction: () -> Unit = {}) {
+    Column(Modifier.fillMaxWidth().padding(top = 68.dp, bottom = 40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, Modifier.size(48.dp), tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.45f))
+        Text(title, Modifier.padding(top = 16.dp), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+        if (action != null) InlineAction(action, onClick = onAction)
+    }
 }
 @Composable fun PrimaryAction(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     TextButton(text, onClick, Modifier.fillMaxWidth().heightIn(min = 52.dp), enabled = enabled,

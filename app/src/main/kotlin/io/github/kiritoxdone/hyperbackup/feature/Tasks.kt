@@ -41,9 +41,8 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
         notices(s, vm)
         if (task == null) item { InfoCard("正在确认任务状态", "先连接 Root 并查询历史记录，保持原 taskId，不重新提交恢复。")
             TextButton("查询任务", vm::refreshTasks, enabled = !s.busy && s.capabilities != null) } else {
-            item { StatusCard("${task.plan.draft.operation.label()}${task.state.label()}",
-                "${date(task.startedAt)}\n项目进度 ${task.items.count { it.outcome !in setOf(Outcome.PENDING, Outcome.RUNNING) }}/${task.items.size}",
-                warning = task.state in setOf(TaskState.PARTIAL, TaskState.FAILED, TaskState.NEEDS_RECONCILIATION), success = task.state == TaskState.SUCCEEDED) }
+            item { InfoCard("${task.plan.draft.operation.label()}${task.state.label()}",
+                "${date(task.startedAt)}\n项目进度 ${task.items.count { it.outcome !in setOf(Outcome.PENDING, Outcome.RUNNING) }}/${task.items.size}") }
             if (task.error.isNotEmpty()) item { InfoCard("任务说明", friendlyError(task.error)) }
             task.editor?.let { editor -> item { PrimaryAction("打开引擎选择与账号映射", !s.busy) { navigate(Route.Editor(editor.taskId)) } } }
             task.prompt?.let { prompt -> item { PromptCard(prompt, s.busy) { value -> vm.answer(prompt, value) } } }
