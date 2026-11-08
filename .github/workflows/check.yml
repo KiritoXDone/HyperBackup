@@ -1,0 +1,163 @@
+name: Check
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install fixed native toolchain
+        run: |
+          sdkmanager 'ndk;30.0.16248370'
+          rustup toolchain install 1.99.1 --profile minimal --target aarch64-linux-android
+      - name: Source and narrow bridge checks
+        run: |
+          python3 -m unittest discover -s engine/tests -v
+          python3 ci/check_source.py
+          python3 ci/upstream_audit.py
+      - name: Build patched native host from pinned source
+        env:
+          RUSTUP_TOOLCHAIN: 1.99.1
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.16248370"
+          python3 engine/patches/build_native.py
+          python3 ci/verify_native.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-host
+          path: engine/generated/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: upstream-audit
+          path: work/upstream-audit.json
+  contracts-and-apk:
+    needs: native-host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-host
+          path: engine/generated
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+      - name: Install pinned Android SDK
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
+      - name: Verify upstream and repository boundaries
+        run: python3 ci/check_source.py
+      - name: Unit contracts, archive attacks, transport failures, lint and APK
+        run: ./gradlew :core:domain:test :core:engine:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --console=plain
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apk-and-check-results
+          path: |
+            app/build/outputs/apk/
+            app/build/reports/
+            core/domain/build/reports/tests/
+            core/engine/build/reports/tests/
+  real-storage:
+    needs: native-host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      HYPERBACKUP_TEST_DAV: http://127.0.0.1:8081/
+      HYPERBACKUP_TEST_SMB: smb://127.0.0.1:1445/backup
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-host
+          path: engine/generated
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
+      - name: Start isolated WebDAV and Samba fixtures
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y samba
+          python3 -m venv work/venv
+          work/venv/bin/pip install WsgiDAV==4.3.3 cheroot==11.0.0
+          python3 ci/setup_samba.py
+          work/venv/bin/python ci/webdav_fixture.py >work/webdav.log 2>&1 &
+          for n in $(seq 1 30); do curl -s -u ci:fixture-only http://127.0.0.1:8081/ >/dev/null && break; sleep 1; done
+      - name: Exercise real protocol repositories
+        run: ./gradlew :core:engine:testDebugUnitTest --tests '*RemoteRepositoryTest' --rerun-tasks --console=plain
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storage-contract-results
+          path: |
+            core/engine/build/reports/tests/
+            work/*.log
+  android-ui:
+    needs: native-host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [28, 36]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-host
+          path: engine/generated
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: ./gradlew :app:connectedDebugAndroidTest --console=plain
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-${{ matrix.api }}-ui-results
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/

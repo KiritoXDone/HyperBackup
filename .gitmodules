@@ -1,0 +1,3 @@
+[submodule "engine/upstream/backup_script"]
+	path = engine/upstream/backup_script
+	url = https://github.com/YAWAsau/backup_script.git

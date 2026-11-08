@@ -1,0 +1,18 @@
+HyperBackup is distributed under GPL-3.0-only.
+
+It incorporates backup_script v1117 by YAWAsau and its contributors, pinned at
+4d85ef6f974dc8b4a9208dd2aa9578a3d69e1ab5. Corresponding source is included through
+the engine/upstream/backup_script Git submodule. Its LICENSE, third_party/licenses,
+vendored libraries, source manifests and build instructions remain in that tree.
+
+HyperBackup's host changes are in engine/patches. The Shell business engine is
+generated with anchored host-only modifications; the Rust editor hand-off is
+rebuilt from that same pinned source. Original and derived payload hashes are
+recorded separately. No Android-DataBackup application code has been copied.
+
+Miuix 0.9.4 and libsu 6.0.0 are Apache-2.0 licensed. Other application dependencies
+retain their respective licenses: AndroidX, Kotlin/kotlinx, OkHttp/Okio, SMBJ,
+Apache Commons Compress and their transitive dependencies. See the pinned Gradle
+dependencies and upstream license metadata for exact artifacts and notices.
+
+Source: https://github.com/KiritoXDone/HyperBackup
