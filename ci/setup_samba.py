@@ -6,10 +6,10 @@ import pwd
 import socket
 import subprocess
 import time
+import tempfile
 
 assert os.environ.get('CI') == 'true', 'Use only in isolated CI runners'
-root = Path('work/smb-fixture').resolve()
-root.mkdir(parents=True, exist_ok=True)
+root = Path(tempfile.mkdtemp(prefix='hyperbackup-smb-', dir='/tmp'))
 root.chmod(0o777)
 runtime = Path('work/smb-runtime').resolve()
 for directory in ['pid', 'lock', 'state', 'cache', 'private']:
