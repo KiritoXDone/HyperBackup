@@ -1,0 +1,9 @@
+{
+  "source": "https://github.com/Kindness-Kismet/AvdLite",
+  "commit": "766f1587e17112b59656dc9818df1ed2d3209f42",
+  "release": "latest-6",
+  "asset": "AvdLiteWithKsu-Android17-api37.2.zip",
+  "sha256": "00385e77c73438f28ca674b5dcb2a929146fef13aa5277535ad1bc50e455bade",
+  "api": "37.2",
+  "abi": "x86_64"
+}
