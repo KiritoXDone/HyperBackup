@@ -39,9 +39,8 @@ internal fun withUiTestHost(test: (UiDevice) -> Unit) {
         test(device)
     } catch (failure: Throwable) {
         if (InstrumentationRegistry.getArguments().getString("displayScenarios") == "true") {
-            val output = java.io.File(context.getExternalFilesDir(null), "ui-evidence").apply { mkdirs() }
-            runCatching { device.dumpWindowHierarchy(java.io.File(output, "failure-${System.currentTimeMillis()}.xml")) }
-            runCatching { device.takeScreenshot(java.io.File(output, "failure-${System.currentTimeMillis()}.png")) }
+            runCatching { device.saveUiEvidence("failure-${System.currentTimeMillis()}.xml") { device.dumpWindowHierarchy(it) } }
+            runCatching { device.capturePage("failure-${System.currentTimeMillis()}") }
         }
         throw failure
     } finally {
@@ -54,13 +53,36 @@ internal fun withUiTestHost(test: (UiDevice) -> Unit) {
 
 internal fun UiDevice.capturePage(name: String) {
     if (InstrumentationRegistry.getArguments().getString("displayScenarios") != "true") return
+    saveUiEvidence("$name.png") { check(takeScreenshot(it)) }
+}
+
+private fun UiDevice.saveUiEvidence(name: String, write: (java.io.File) -> Unit) {
     val context = InstrumentationRegistry.getInstrumentation().targetContext
     val output = java.io.File(context.getExternalFilesDir(null), "ui-evidence").apply { mkdirs() }
-    check(takeScreenshot(java.io.File(output, "$name.png")))
+    val file = java.io.File(output, name)
+    write(file)
+    // UTP uninstalls the target APK before the host can collect its external files.
+    executeShellCommand("mkdir -p /sdcard/Download/HyperBackupUi")
+    executeShellCommand("cp '${file.absolutePath}' /sdcard/Download/HyperBackupUi/")
 }
 
 internal fun UiDevice.textOnPage(label: String): androidx.test.uiautomator.UiObject2 {
-    wait(Until.findObject(By.text(label)), 1200)?.let { return it }
+    fun settledText(): androidx.test.uiautomator.UiObject2? {
+        var previous: android.graphics.Rect? = null
+        var stable = 0
+        repeat(15) {
+            val node = findObject(By.text(label)) ?: return null
+            val bounds = runCatching { node.visibleBounds }.getOrNull() ?: return null
+            if (bounds.centerY() !in (displayHeight * 0.10f).toInt()..(displayHeight * 0.85f).toInt()) return null
+            stable = if (bounds == previous) stable + 1 else 0
+            if (stable >= 3) return node
+            previous = bounds
+            Thread.sleep(100)
+        }
+        return null
+    }
+    wait(Until.hasObject(By.scrollable(true)), 3000)
+    settledText()?.let { return it }
     // The lazy list fills the scaffold behind its bars. Keep gestures in the
     // content area, and wait for semantics after scrolling instead of trusting
     // a missing TYPE_VIEW_SCROLLED event to mean the end of the list.
@@ -72,7 +94,8 @@ internal fun UiDevice.textOnPage(label: String): androidx.test.uiautomator.UiObj
             val bottom = minOf(bounds.bottom, (displayHeight * 0.76f).toInt())
             check(bottom > top) { "SCROLL_CONTENT_OCCLUDED:$label" }
             swipe(bounds.centerX(), if (down) bottom else top, bounds.centerX(), if (down) top else bottom, 30)
-            wait(Until.findObject(By.text(label)), 400)?.let { return it }
+            Thread.sleep(350)
+            settledText()?.let { return it }
         }
     }
     error("TEXT_NOT_VISIBLE:$label")

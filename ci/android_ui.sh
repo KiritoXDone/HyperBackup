@@ -2,7 +2,7 @@
 set -euo pipefail
 collect() {
   mkdir -p work/ui-evidence
-  adb pull /sdcard/Android/data/io.github.kiritoxdone.hyperbackup/files/ui-evidence work/ui-evidence/ >/dev/null 2>&1 || true
+  adb pull /sdcard/Download/HyperBackupUi work/ui-evidence/ >/dev/null 2>&1 || true
   adb logcat -d >work/ui-evidence/logcat.txt 2>&1 || true
 }
 trap collect EXIT

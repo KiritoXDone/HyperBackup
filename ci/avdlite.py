@@ -156,7 +156,7 @@ def run(sdk, work):
                     pass
             try:
                 shell('rm', '-rf', fixture, check=False)
-                call('pull', '/sdcard/Android/data/io.github.kiritoxdone.hyperbackup/files/ui-evidence', str(evidence / 'ui'), check=False)
+                call('pull', '/sdcard/Download/HyperBackupUi', str(evidence / 'ui'), check=False)
                 call('emu', 'kill', check=False)
             except (subprocess.TimeoutExpired, OSError):
                 pass
