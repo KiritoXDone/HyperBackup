@@ -1,0 +1,19 @@
+{
+  "sdk_package": "system-images;android-36;aosp_atd;arm64-v8a",
+  "kernel_release": "6.6.66-android15-8-gb66429556fb8-ab13070261-4k",
+  "kmi": "android15-6.6",
+  "expected_page_size": 4096,
+  "kernelsu": "v3.3.1",
+  "module_sha256": "e57ce23de951be6b0dee5030f6724322fed126aa4af71828994437bfb0bb61ad",
+  "host_tool_platform": "darwin-x86_64",
+  "host_tool_sha256": "978b1fba2dce9b278251c99304671c0a32ce2844787de64780ac875202abb03a",
+  "kernel_sha256": "b950027375a82427604eba65f41de7188737e444b01cb625c61056ffd14cf427",
+  "source_properties_sha256": "c9b332d965ab9ebdf9ee2d1015110a624f8e57a83c6532f63d94bc4901c19c32",
+  "stock_ramdisk_sha256": "216cc9bc4f4ade4a1b300b6d79e6907f07517d61d131b91dac2bad70854f901c",
+  "patched_ramdisk_sha256": "b55ed18d5530b3a79a6e7ec98cf84b79dbd1d3786e066b336e0e7280b3364b98",
+  "full_archive_verified": false,
+  "archive_sha256": null,
+  "verification_scope": "source.properties, kernel and ramdisk only",
+  "boot_verified": false,
+  "app_root_verified": false
+}

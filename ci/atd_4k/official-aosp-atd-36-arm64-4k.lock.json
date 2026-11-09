@@ -1,0 +1,49 @@
+{
+  "system_image": {
+    "sdk_package": "system-images;android-36;aosp_atd;arm64-v8a",
+    "revision": 1,
+    "archive_url": "https://dl.google.com/android/repository/sys-img/aosp_atd/arm64-v8a-36_r01.zip",
+    "archive_size": 712011575,
+    "archive_sha1_google_index": "906703f87bd947048b9099b8fbf34bd8ee33c77e",
+    "source_properties_sha256": "c9b332d965ab9ebdf9ee2d1015110a624f8e57a83c6532f63d94bc4901c19c32",
+    "kernel_sha256": "b950027375a82427604eba65f41de7188737e444b01cb625c61056ffd14cf427",
+    "ramdisk_sha256": "216cc9bc4f4ade4a1b300b6d79e6907f07517d61d131b91dac2bad70854f901c",
+    "kernel_release": "6.6.66-android15-8-gb66429556fb8-ab13070261-4k",
+    "kmi": "android15-6.6",
+    "expected_page_size": 4096
+  },
+  "kernelsu": {
+    "version": "v3.3.1",
+    "kernel_version_code": 32680,
+    "module": {
+      "name": "lkm-aarch64-android15-6.6_kernelsu.ko",
+      "asset_id": 635227199,
+      "sha256": "e57ce23de951be6b0dee5030f6724322fed126aa4af71828994437bfb0bb61ad"
+    },
+    "manager": {
+      "name": "KernelSU_v3.3.1_32680-release.apk",
+      "asset_id": 635227183,
+      "sha256": "b4a059ace71de2fa65cc7f12b1c58d55fc23ab25e057ee4230ce779742abe450"
+    },
+    "host_tools": {
+      "darwin-x86_64": {
+        "name": "ksud-x86_64-apple-darwin",
+        "asset_id": 635227195,
+        "sha256": "978b1fba2dce9b278251c99304671c0a32ce2844787de64780ac875202abb03a"
+      },
+      "linux-x86_64": {
+        "name": "ksud-x86_64-unknown-linux-musl",
+        "asset_id": 635227190,
+        "sha256": "29b50f946a3cc40b04aef3dd587adad227fe0f70edf9c56b02c84479f0b0e954"
+      },
+      "darwin-arm64": {
+        "name": "ksud-aarch64-apple-darwin",
+        "sha256": "6ccadcf7a903f7dbceae053d1793722e18ae401abfdd39b96bf9661658a3c4ed"
+      },
+      "linux-aarch64": {
+        "name": "ksud-aarch64-unknown-linux-musl",
+        "sha256": "2ea47fad00d5d9de4c4affd9e733ef1ba50a9f97c10fe50b767a20fa103d581a"
+      }
+    }
+  }
+}
