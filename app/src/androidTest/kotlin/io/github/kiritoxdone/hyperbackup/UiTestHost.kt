@@ -11,6 +11,7 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Configurator
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
+import androidx.test.uiautomator.waitForStable
 
 internal fun withUiTestHost(test: (UiDevice) -> Unit) {
     val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -63,23 +64,20 @@ private fun UiDevice.saveUiEvidence(name: String, write: (java.io.File) -> Unit)
     write(file)
     // UTP uninstalls the target APK before the host can collect its external files.
     executeShellCommand("mkdir -p /sdcard/Download/HyperBackupUi")
-    executeShellCommand("cp '${file.absolutePath}' /sdcard/Download/HyperBackupUi/")
+    // UiAutomation executes argv directly; shell quotes would become part of this path.
+    require(name.none { it.isWhitespace() || it == '\'' })
+    executeShellCommand("cp ${file.absolutePath} /sdcard/Download/HyperBackupUi/")
 }
 
 internal fun UiDevice.textOnPage(label: String): androidx.test.uiautomator.UiObject2 {
     fun settledText(): androidx.test.uiautomator.UiObject2? {
-        var previous: android.graphics.Rect? = null
-        var stable = 0
-        repeat(15) {
-            val node = findObject(By.text(label)) ?: return null
-            val bounds = runCatching { node.visibleBounds }.getOrNull() ?: return null
-            if (bounds.centerY() !in (displayHeight * 0.10f).toInt()..(displayHeight * 0.85f).toInt()) return null
-            stable = if (bounds == previous) stable + 1 else 0
-            if (stable >= 3) return node
-            previous = bounds
-            Thread.sleep(100)
-        }
-        return null
+        val node = findObject(By.text(label)) ?: return null
+        val result = runCatching { node.waitForStable(stableTimeoutMs = 2000, stableIntervalMs = 300,
+            requireStableScreenshot = false) }.getOrNull() ?: return null
+        if (result.isTimeout) return null
+        val current = findObject(By.text(label)) ?: return null
+        val bounds = current.visibleBounds
+        return current.takeIf { bounds.centerY() in (displayHeight * 0.10f).toInt()..(displayHeight * 0.85f).toInt() }
     }
     wait(Until.hasObject(By.scrollable(true)), 3000)
     settledText()?.let { return it }
