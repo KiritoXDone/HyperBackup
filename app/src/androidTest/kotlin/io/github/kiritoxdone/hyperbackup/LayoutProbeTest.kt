@@ -52,8 +52,9 @@ class LayoutProbeTest {
             assertNotNull(device.findObject(By.text("添加位置")))
             device.findObject(By.text("取消")).click(100)
         }
-        device.pressBack()
-        device.findObject(By.text("恢复")).click(100)
+        device.wait(Until.findObject(By.desc("返回")), 5000)!!.click(100)
+        assertNotNull(device.wait(Until.findObject(By.text("HyperBackup")), 5000))
+        device.textOnPage("恢复").click(100)
         assertNotNull(device.wait(Until.findObject(By.text("备份集")), 5000))
         device.capturePage("恢复")
     }

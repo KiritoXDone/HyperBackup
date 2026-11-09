@@ -30,6 +30,7 @@ internal fun withUiTestHost(test: (UiDevice) -> Unit) {
         // OEM animations can keep Instrumentation.waitForIdleSync busy indefinitely.
         context.startActivity(Intent(context, MainActivity::class.java).putExtra("testKeepScreenOn", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
         check(device.wait(Until.hasObject(By.pkg(context.packageName)), 15000)) { "APP_WINDOW_NOT_VISIBLE" }
+        check(device.wait(Until.hasObject(By.pkg(context.packageName).text("HyperBackup")), 15000)) { "HOME_WINDOW_NOT_READY" }
         instrumentation.runOnMainSync {
             activity = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().firstOrNull()
             activity?.window?.let { window ->
@@ -47,6 +48,8 @@ internal fun withUiTestHost(test: (UiDevice) -> Unit) {
     } finally {
         instrumentation.runOnMainSync {
             if (!wasKeepingScreenOn) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                .filterIsInstance<MainActivity>().forEach { it.finish() }
         }
         config.waitForIdleTimeout = oldTimeout
     }

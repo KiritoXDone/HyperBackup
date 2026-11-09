@@ -10,3 +10,8 @@
 -keepclassmembers class io.github.kiritoxdone.hyperbackup.HyperBackupApp {
     public io.github.kiritoxdone.hyperbackup.data.Preferences getPreferences();
 }
+# The render-only instrumentation obtains the same Activity-owned ViewModel.
+-keepclassmembers class androidx.lifecycle.ViewModelProvider {
+    public <init>(androidx.lifecycle.ViewModelStoreOwner);
+    public androidx.lifecycle.ViewModel get(java.lang.Class);
+}
