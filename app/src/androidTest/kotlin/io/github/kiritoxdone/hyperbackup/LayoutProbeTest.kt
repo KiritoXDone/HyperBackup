@@ -29,10 +29,10 @@ class LayoutProbeTest {
         }
         device.textOnPage("主题")
         assertFalse(device.hasObject(By.text("浅色")))
-        device.textOnPage("主题").click()
+        device.textOnPage("主题").click(100)
         assertNotNull(device.wait(Until.findObject(By.text("浅色")), 5000))
         device.pressBack()
-        device.textOnPage("关于").click()
+        device.textOnPage("关于").click(100)
         assertNotNull(device.wait(Until.findObject(By.text("项目主页")), 5000))
         assertNotNull(device.findObject(By.text("问题反馈")))
         device.pressBack()

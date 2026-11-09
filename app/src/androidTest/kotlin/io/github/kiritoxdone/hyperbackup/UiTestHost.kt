@@ -19,7 +19,7 @@ internal fun withUiTestHost(test: (UiDevice) -> Unit) {
     val device = UiDevice.getInstance(instrumentation)
     val config = Configurator.getInstance()
     val oldTimeout = config.waitForIdleTimeout
-    config.waitForIdleTimeout = 0
+    config.waitForIdleTimeout = 1000
     if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
         instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
     }

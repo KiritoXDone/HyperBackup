@@ -33,7 +33,7 @@ class UiSmokeTest {
                 device.findObjects(By.text("设置")).last().click()
                 device.textOnPage("主题")
                 assertFalse(device.hasObject(By.text("浅色")))
-                device.textOnPage("主题").click()
+                device.textOnPage("主题").click(100)
                 assertNotNull(device.wait(Until.findObject(By.text("深色")), 5000))
                 device.pressBack()
             }
