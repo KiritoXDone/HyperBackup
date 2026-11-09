@@ -12,12 +12,14 @@ import kotlinx.coroutines.flow.*
 enum class DestinationState { UNCHECKED, CHECKING, READY, FAILED }
 
 enum class RootConnectionState { UNCHECKED, CHECKING, READY, UNAVAILABLE }
+data class DeviceStorage(val total: Long, val available: Long)
 
 data class AppState(
     val capabilities: Capabilities? = null, val apps: List<AppInstance> = emptyList(), val user: Int = 0,
     val selectedApps: Set<AppKey> = emptySet(), val selectedRecords: Set<String> = emptySet(),
     val destinations: List<Destination> = emptyList(), val destinationId: String? = null,
     val destinationState: DestinationState = DestinationState.UNCHECKED,
+    val connectionTests: Map<String, DestinationState> = emptyMap(), val storage: DeviceStorage? = null,
     val repository: ScanResult? = null, val cached: Boolean = false, val tasks: List<TaskSnapshot> = emptyList(),
     val draft: Draft? = null, val plan: Plan? = null, val busy: Boolean = false, val error: String? = null,
     val connectionState: RootConnectionState = RootConnectionState.UNCHECKED, val connectionError: String? = null,
@@ -38,13 +40,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val catalog = withContext(Dispatchers.IO) { ScriptCatalogReader.fromAssets(app) }
             val reader = InstalledAppsReader(app)
             val installed = withContext(Dispatchers.IO) { reader.read() }
+            val storage = withContext(Dispatchers.IO) { runCatching { android.os.StatFs(app.filesDir.absolutePath).let {
+                DeviceStorage(it.totalBytes, it.availableBytes).takeIf { disk -> disk.total > 0 }
+            } }.getOrNull() }
             val behavior = app.preferences.behavior.first()
             val preferences = app.preferences.engine.first()
             val destinations = session.destinations(); val selected = app.preferences.selectedDestination() ?: destinations.firstOrNull()?.id
             val draft = app.preferences.draft()?.let { runCatching { Wire.json.decodeFromString<Draft>(it) }.getOrNull() }
             mutable.update { it.copy(destinations = destinations, destinationId = selected, tasks = session.cachedHistory(),
                 repository = selected?.let { id -> session.cachedRepository(id) }, cached = true, draft = draft,
-                scriptCatalog = catalog, behavior = behavior, enginePreferences = preferences, apps = installed, user = reader.userId) }
+                scriptCatalog = catalog, behavior = behavior, enginePreferences = preferences, apps = installed, user = reader.userId, storage = storage) }
             if (behavior.connectOnLaunch) connectEngine()
         }
         viewModelScope.launch {
@@ -89,17 +94,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleApp(key: AppKey) { mutable.update { it.copy(selectedApps = if (key in it.selectedApps) it.selectedApps - key else it.selectedApps + key) } }
     fun toggleAll(keys: List<AppKey>) { mutable.update { it.copy(selectedApps = if (it.selectedApps.containsAll(keys)) it.selectedApps - keys.toSet() else it.selectedApps + keys) } }
     fun toggleRecord(id: String) { mutable.update { it.copy(selectedRecords = if (id in it.selectedRecords) it.selectedRecords - id else it.selectedRecords + id) } }
-    fun selectDestination(id: String) = action {
+    fun selectDestination(id: String, done: () -> Unit = {}) = action {
         app.preferences.selectDestination(id)
         mutable.update { it.copy(destinationId = id, repository = session.cachedRepository(id), cached = true, plan = null, selectedRecords = emptySet(), destinationState = DestinationState.UNCHECKED) }
         if (state.value.capabilities != null) scanSelected(id)
+        done()
     }
     fun saveDestination(connection: Connection, create: Boolean, done: () -> Unit) = action {
         if (state.value.capabilities == null) connectEngine()
         check(state.value.capabilities != null) { "ROOT_NOT_CONNECTED" }
+        check(state.value.tasks.none { it.state in setOf(TaskState.RUNNING, TaskState.STOP_REQUESTED, TaskState.NEEDS_RECONCILIATION) }) { "请在当前任务结束并完成核对后修改位置" }
         val saved = session.saveDestination(connection, create); app.preferences.selectDestination(saved.id)
         mutable.update { it.copy(destinations = session.destinations(), destinationId = saved.id, repository = session.cachedRepository(saved.id),
-            cached = false, selectedRecords = emptySet(), destinationState = DestinationState.READY) }; done()
+            cached = false, selectedRecords = emptySet(), destinationState = DestinationState.READY,
+            connectionTests = it.connectionTests + (saved.id to DestinationState.READY)) }; done()
     }
     fun scan() = action {
         val id = state.value.destinationId ?: error("请先添加备份位置")
@@ -108,12 +116,31 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         scanSelected(id)
     }
     private suspend fun scanSelected(id: String) {
-        mutable.update { it.copy(destinationState = DestinationState.CHECKING) }
+        mutable.update { it.copy(destinationState = DestinationState.CHECKING, connectionTests = it.connectionTests + (id to DestinationState.CHECKING)) }
         try {
             val result = session.scan(id)
-            mutable.update { it.copy(repository = result, cached = false, destinationState = DestinationState.READY) }
+            mutable.update { it.copy(repository = result, cached = false, destinationState = DestinationState.READY, connectionTests = it.connectionTests + (id to DestinationState.READY)) }
         } catch (e: Exception) {
-            mutable.update { it.copy(destinationState = DestinationState.FAILED) }; throw e
+            mutable.update { it.copy(destinationState = DestinationState.FAILED, connectionTests = it.connectionTests + (id to DestinationState.FAILED)) }; throw e
+        }
+    }
+    suspend fun connectionForEdit(id: String) = withContext(Dispatchers.IO) { session.connection(id) }
+    fun testConnection(connection: Connection, done: () -> Unit) = action {
+        if (state.value.capabilities == null) connectEngine()
+        check(state.value.capabilities != null) { "ROOT_NOT_CONNECTED" }
+        session.probe(connection); done()
+    }
+    fun testDestination(id: String) = action {
+        if (state.value.capabilities == null) connectEngine()
+        check(state.value.capabilities != null) { "ROOT_NOT_CONNECTED" }
+        mutable.update { it.copy(connectionTests = it.connectionTests + (id to DestinationState.CHECKING)) }
+        try {
+            val result = session.scan(id)
+            mutable.update { it.copy(connectionTests = it.connectionTests + (id to DestinationState.READY),
+                repository = if (it.destinationId == id) result else it.repository,
+                destinationState = if (it.destinationId == id) DestinationState.READY else it.destinationState) }
+        } catch (e: Exception) {
+            mutable.update { it.copy(connectionTests = it.connectionTests + (id to DestinationState.FAILED)) }; throw e
         }
     }
     private fun setDraft(draft: Draft) {
@@ -136,6 +163,33 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         app.preferences.engine(next); mutable.update { it.copy(enginePreferences = next) }; done()
     }
     fun resetEnginePreferences() { changeEnginePreferences { EnginePreferences() } }
+    fun addLabel(name: String) {
+        val next = state.value.behavior.labels + (name.trim() to emptySet())
+        runCatching { require(name.trim() !in state.value.behavior.labels) { "标签已存在" }; AppLabels.validate(next) }
+            .onSuccess { changeBehavior { it.copy(labels = next) } }.onFailure { clearError(it.message) }
+    }
+    fun removeLabel(name: String) = changeBehavior { it.copy(labels = it.labels - name) }
+    fun toggleLabel(name: String, key: AppKey) = changeBehavior { it.copy(labels = AppLabels.toggle(it.labels, name, key)) }
+    fun exportLabels(uri: android.net.Uri) = action {
+        val text = Wire.json.encodeToString(LabelsArchive.serializer(), LabelsArchive(labels = state.value.behavior.labels))
+        withContext(Dispatchers.IO) { requireNotNull(app.contentResolver.openOutputStream(uri)).bufferedWriter().use { it.write(text) } }
+    }
+    fun importLabels(uri: android.net.Uri) = action {
+        val archive = withContext(Dispatchers.IO) { requireNotNull(app.contentResolver.openInputStream(uri)).use { stream ->
+            val buffer = java.io.ByteArrayOutputStream()
+            val chunk = ByteArray(8192)
+            while (true) {
+                val n = stream.read(chunk); if (n < 0) break
+                require(buffer.size() + n <= 1_048_576) { "标签文件过大" }; buffer.write(chunk, 0, n)
+            }
+            val bytes = buffer.toByteArray()
+            Wire.json.decodeFromString<LabelsArchive>(bytes.decodeToString())
+        } }
+        require(archive.schema == 1) { "标签版本不匹配" }; AppLabels.validate(archive.labels)
+        val merged = state.value.behavior.labels.toMutableMap()
+        archive.labels.forEach { (name, members) -> merged[name] = merged[name].orEmpty() + members }
+        AppLabels.validate(merged); app.preferences.behavior(state.value.behavior.copy(labels = merged))
+    }
     fun exportSettings(uri: android.net.Uri) = action {
         val snapshot = SettingsArchive(engine = state.value.enginePreferences, behavior = state.value.behavior, theme = state.value.theme)
         withContext(Dispatchers.IO) {
@@ -163,6 +217,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val s = state.value; val id = s.destinationId ?: return clearError("请先添加备份位置")
         if (s.selectedApps.isEmpty()) return clearError("请先选择应用")
         newDraft(ScriptPlanScope.backup(id, s.selectedApps, s.user))
+    }
+    fun beginAppBackup(key: AppKey, config: Map<String, String>) {
+        val s = state.value; val id = s.destinationId ?: return clearError("请先添加备份位置")
+        val catalog = s.scriptCatalog ?: return
+        runCatching { config.forEach { (field, value) -> ScriptPreferences.validate(catalog, ScriptProfile.BACKUP, field, value) }
+            newDraft(ScriptPlanScope.backup(id, setOf(key), key.userId, config)) }.onFailure { clearError(it.message) }
     }
     fun beginRecords(records: List<BackupRecord>, operation: Operation) {
         val s = state.value; val id = s.destinationId ?: return
@@ -204,7 +264,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         updateTask(task); TaskForegroundService.observe(app, task.id)
         mutable.update { it.copy(pendingSubmission = false, plan = null) }; done(task.id)
     }
-    fun refreshTasks() = action { session.reconcileSubmissions(); mutable.update { it.copy(tasks = session.history(), pendingSubmission = false) } }
+    fun refreshTasks() = action { if (state.value.capabilities == null) connectEngine(); check(state.value.capabilities != null) { "ROOT_NOT_CONNECTED" }
+        session.reconcileSubmissions(); mutable.update { it.copy(tasks = session.history(), pendingSubmission = false) } }
     fun stop(id: String) = action { updateTask(session.stop(id)) }
     fun reconcile(id: String) = action { updateTask(session.reconcile(id)) }
     fun acknowledge(id: String) = action { updateTask(session.acknowledge(id)) }

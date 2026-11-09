@@ -11,6 +11,8 @@ import kotlinx.serialization.Serializable
     val showPackageNames: Boolean = true,
     val showSystemApps: Boolean = false,
     val appSort: AppSort = AppSort.NAME, val sortDescending: Boolean = false,
+    val dynamicColor: Boolean = false,
+    val labels: Map<String, Set<String>> = emptyMap(),
 )
 @Serializable data class EnginePreferences(
     val backup: Map<String, String> = emptyMap(),
@@ -62,6 +64,7 @@ object ScriptPreferences {
     }
     fun validateArchive(catalog: ScriptCatalog, archive: SettingsArchive) {
         require(archive.theme in setOf("system", "light", "dark")) { "主题设置无效" }
+        AppLabels.validate(archive.behavior.labels)
         require(archive.schema == 1 && archive.upstream == Wire.UPSTREAM) { "配置版本不匹配" }
         ScriptProfile.entries.forEach { profile -> overrides(archive.engine, profile).forEach { (key, value) -> validate(catalog, profile, key, value) } }
     }

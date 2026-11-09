@@ -4,11 +4,21 @@ import io.github.kiritoxdone.hyperbackup.domain.*
 
 /** Coordinates typed engine requests and disposable Room projections; no Root writes live here. */
 class BackupSession(private val gateway: BackupGateway, private val dao: BackupDao, private val vault: CredentialVault) {
+    private val probeId = Wire.id()
     companion object {
         fun create(context: android.content.Context, gateway: BackupGateway) = BackupSession(gateway, BackupDatabase.open(context).dao(), CredentialVault())
     }
     val connected: Boolean get() = gateway.isConnected()
     suspend fun destinations() = dao.destinations().map { Wire.json.decodeFromString<Destination>(it.json) }
+    suspend fun connection(id: String): Connection {
+        val row = dao.destinations().first { it.id == id }
+        return Connection(Wire.json.decodeFromString<Destination>(row.json), vault.decrypt(row.id, row.encryptedSecret))
+    }
+    suspend fun probe(connection: Connection) {
+        val temporary = connection.copy(destination = connection.destination.copy(id = probeId, repoId = null))
+        gateway.configure(temporary)
+        gateway.scan(temporary.destination.id)
+    }
     suspend fun connect(): Capabilities {
         gateway.connect()
         dao.destinations().forEach { row ->
