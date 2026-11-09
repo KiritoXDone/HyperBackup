@@ -67,7 +67,11 @@ import top.yukonga.miuix.kmp.window.WindowDialog
                     }
                 }
             }, actions = {
-                if (tab == 0) IconButton(onClick = { push(Route.Tasks) }) { Icon(MiuixIcons.Recent, "任务中心") }
+                when (tab) {
+                    0 -> ActionIcon(MiuixIcons.Recent, "任务中心", onClick = { push(Route.Tasks) })
+                    1 -> AppsToolbar(state, vm)
+                    2 -> ActionIcon(MiuixIcons.AddCircle, "添加备份位置", onClick = { push(Route.AddLocation) })
+                }
             }) { padding ->
                 when (tab) {
                     0 -> HomePage(state, vm, padding, ::push, { tab = 2 })
@@ -90,7 +94,7 @@ import top.yukonga.miuix.kmp.window.WindowDialog
         entry<Route.AddLocation> { PageShell("添加位置", back) { AddLocationPage(state, vm, it, back) } }
         entry<Route.Config> {
             PageShell(state.draft?.script?.command?.label ?: "操作设置", back, bottom = {
-                BottomAction("检查并继续", state.draft != null && state.capabilities != null && !state.busy) { vm.preflight { push(Route.Confirm) } }
+                BottomAction("检查并继续", state.draft != null && !state.busy) { vm.preflight { push(Route.Confirm) } }
             }) { ConfigPage(state, vm, it, ::push) }
         }
         entry<Route.AdvancedConfig> { PageShell("高级设置", back) { AdvancedConfigPage(state, vm, it, ::push) } }

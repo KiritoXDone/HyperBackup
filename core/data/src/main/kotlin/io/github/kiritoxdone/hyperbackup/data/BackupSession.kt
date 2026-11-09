@@ -19,10 +19,13 @@ class BackupSession(private val gateway: BackupGateway, private val dao: BackupD
     }
     suspend fun saveDestination(connection: Connection, create: Boolean): Destination {
         gateway.configure(connection)
-        val repo = if (create) gateway.initialize(connection.destination.id) else gateway.scan(connection.destination.id).repository
+        if (create) gateway.initialize(connection.destination.id)
+        val scan = gateway.scan(connection.destination.id)
+        val repo = scan.repository
         val destination = connection.destination.copy(repoId = repo.repoId.takeIf { repo.createdAt != 0L })
         gateway.configure(connection.copy(destination = destination))
         dao.saveDestination(DestinationRow(destination.id, Wire.json.encodeToString(Destination.serializer(), destination), vault.encrypt(destination.id, connection.password)))
+        dao.saveRepository(RepositoryRow(destination.id, Wire.json.encodeToString(ScanResult.serializer(), scan), scan.scannedAt))
         return destination
     }
     suspend fun inventory(user: Int) = gateway.inventory(user)

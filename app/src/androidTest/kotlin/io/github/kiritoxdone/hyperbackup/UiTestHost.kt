@@ -37,6 +37,13 @@ internal fun withUiTestHost(test: (UiDevice) -> Unit) {
             }
         }
         test(device)
+    } catch (failure: Throwable) {
+        if (InstrumentationRegistry.getArguments().getString("displayScenarios") == "true") {
+            val output = java.io.File(context.getExternalFilesDir(null), "ui-evidence").apply { mkdirs() }
+            runCatching { device.dumpWindowHierarchy(java.io.File(output, "failure-${System.currentTimeMillis()}.xml")) }
+            runCatching { device.takeScreenshot(java.io.File(output, "failure-${System.currentTimeMillis()}.png")) }
+        }
+        throw failure
     } finally {
         instrumentation.runOnMainSync {
             if (!wasKeepingScreenOn) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -45,15 +52,28 @@ internal fun withUiTestHost(test: (UiDevice) -> Unit) {
     }
 }
 
+internal fun UiDevice.capturePage(name: String) {
+    if (InstrumentationRegistry.getArguments().getString("displayScenarios") != "true") return
+    val context = InstrumentationRegistry.getInstrumentation().targetContext
+    val output = java.io.File(context.getExternalFilesDir(null), "ui-evidence").apply { mkdirs() }
+    check(takeScreenshot(java.io.File(output, "$name.png")))
+}
+
 internal fun UiDevice.textOnPage(label: String): androidx.test.uiautomator.UiObject2 {
     wait(Until.findObject(By.text(label)), 1200)?.let { return it }
-    repeat(8) {
-        val list = findObject(By.scrollable(true)) ?: error("SCROLL_CONTAINER_NOT_FOUND:$label")
-        if (!list.scroll(androidx.test.uiautomator.Direction.DOWN, 0.65f)) {
-            findObject(By.text(label))?.let { return it }
-            error("TEXT_NOT_VISIBLE:$label")
+    // The lazy list fills the scaffold behind its bars. Keep gestures in the
+    // content area, and wait for semantics after scrolling instead of trusting
+    // a missing TYPE_VIEW_SCROLLED event to mean the end of the list.
+    for (down in listOf(true, false)) {
+        repeat(10) {
+            val list = findObject(By.scrollable(true)) ?: error("SCROLL_CONTAINER_NOT_FOUND:$label")
+            val bounds = list.visibleBounds
+            val top = maxOf(bounds.top, (displayHeight * 0.28f).toInt())
+            val bottom = minOf(bounds.bottom, (displayHeight * 0.76f).toInt())
+            check(bottom > top) { "SCROLL_CONTENT_OCCLUDED:$label" }
+            swipe(bounds.centerX(), if (down) bottom else top, bounds.centerX(), if (down) top else bottom, 30)
+            wait(Until.findObject(By.text(label)), 400)?.let { return it }
         }
-        findObject(By.text(label))?.let { return it }
     }
     error("TEXT_NOT_VISIBLE:$label")
 }

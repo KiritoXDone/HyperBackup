@@ -100,7 +100,7 @@ import top.yukonga.miuix.kmp.icon.extended.*
         if (protocol == Protocol.SMB) item { TextField(domain, { domain = it }, Modifier.fillMaxWidth(), label = "域（可留空）", singleLine = true) }
         if (protocol == Protocol.WEBDAV) item { Card { SwitchPreference(http, { http = it }, "允许 HTTP", summary = "显式启用未加密传输；证书错误不会自动忽略。") } }
         item { Card { SwitchPreference(create, { create = it }, "创建新仓库", summary = "默认连接已有仓库。创建要求空目录；远端目录需先在服务器创建。") } }
-        item { PrimaryAction(if (create) "检查并创建仓库" else "连接并读取清单", !s.busy && s.capabilities != null && name.isNotBlank() && address.isNotBlank()) {
+        item { PrimaryAction(if (create) "检查并创建仓库" else "连接并读取清单", !s.busy && name.isNotBlank() && address.isNotBlank()) {
             vm.saveDestination(Connection(Destination(name = name.trim(), protocol = protocol, address = address.trim().trimEnd('/'), username = username, domain = domain, allowHttp = http), password), create, done)
         } }
     }

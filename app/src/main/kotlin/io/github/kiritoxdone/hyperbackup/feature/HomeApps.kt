@@ -54,46 +54,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
     }
 }
 
-@Composable fun AppsPage(s: AppState, vm: AppViewModel, padding: PaddingValues, selection: Boolean, navigate: (Route) -> Unit) {
-    var query by rememberSaveable { mutableStateOf("") }
-    val showSystem = s.behavior.showSystemApps
-    val filtered = remember(s.apps, query, showSystem, s.behavior.appSort) { s.apps.filter { !ProtectionPolicy.protected(it) && (showSystem || !it.system) && (it.label.contains(query, true) || it.key.packageName.contains(query, true)) }.sortedBy { if (s.behavior.appSort == AppSort.PACKAGE) it.key.packageName else it.label.lowercase() } }
-    PageList(padding) {
-        notices(s, vm, if (selection) null else navigate)
-        item { Search(query, { query = it }, "搜索名称或包名") }
-        item {
-            val users = s.capabilities?.users.orEmpty()
-            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                OverlaySpinnerPreference(items = users.map { DropdownItem(it.name) }, selectedIndex = users.indexOfFirst { it.id == s.user }.coerceAtLeast(0),
-                    title = users.find { it.id == s.user }?.name ?: "用户", showValue = false, modifier = Modifier.weight(1f),
-                    insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp), enabled = users.isNotEmpty() && !s.busy,
-                    onSelectedIndexChange = { vm.selectUser(users[it].id) })
-                OverlaySpinnerPreference(items = listOf(DropdownItem("用户应用"), DropdownItem("含系统应用")), selectedIndex = if (showSystem) 1 else 0,
-                    title = if (showSystem) "全部应用" else "用户应用", showValue = false, modifier = Modifier.weight(1.25f),
-                    insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp), onSelectedIndexChange = { index -> vm.changeBehavior { it.copy(showSystemApps = index == 1) } })
-                ActionIcon(if (selection) MiuixIcons.All else MiuixIcons.Edit, if (selection) "全选" else "选择应用", enabled = !s.busy && filtered.isNotEmpty()) {
-                    if (selection) vm.toggleAll(filtered.map { it.key }) else navigate(Route.SelectApps)
-                }
-            }
-        }
-        if (selection && s.selectedApps.isNotEmpty()) item { Text("已选 ${s.selectedApps.size} 项", Modifier.padding(horizontal = 16.dp), color = MiuixTheme.colorScheme.onSurfaceVariantSummary) }
-        if (filtered.isEmpty()) item { EmptyContent(MiuixIcons.GridView, if (s.capabilities == null) "未读取应用" else if (query.isNotEmpty()) "没有匹配的应用" else "暂无应用") }
-        items(filtered, key = { it.key.stableId }) { app ->
-            Card(onClick = { if (selection) vm.toggleApp(app.key) else navigate(Route.AppDetail(app.key.userId, app.key.packageName)) }) {
-                Row(Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    AppIcon(app)
-                    Column(Modifier.weight(1f)) {
-                        Text(app.label.ifEmpty { app.key.packageName }, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        if (s.behavior.showPackageNames) Text(app.key.packageName + if (app.system) " · 系统应用" else "", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, maxLines = 2)
-                    }
-                    if (selection) Checkbox(androidx.compose.ui.state.ToggleableState(app.key in s.selectedApps), { vm.toggleApp(app.key) }) else Text("›", style = MiuixTheme.textStyles.title3)
-                }
-            }
-        }
-        if (filtered.isNotEmpty()) item { Text("${filtered.size} 个应用", Modifier.padding(horizontal = 16.dp), style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) }
-    }
-}
-
 @Composable fun AppIcon(app: AppInstance, modifier: Modifier = Modifier.size(44.dp)) {
     val context = LocalContext.current
     val bitmap by produceState<android.graphics.Bitmap?>(null, app.key.packageName) {

@@ -26,19 +26,13 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
     val records = s.repository?.records.orEmpty().filter { it.app.label.contains(query, true) || it.app.key.packageName.contains(query, true) }
     val groups = records.groupBy { it.batchId }.toList()
     PageList(padding) {
-        notices(s, vm)
-        item { Card(Modifier.fillMaxWidth()) {
-            ArrowPreference(destination?.name ?: "选择备份位置", summary = destination?.protocol?.name,
-                startAction = { Icon(MiuixIcons.Backup, null, Modifier.padding(end = 12.dp).size(26.dp)) },
-                onClick = { navigate(Route.Locations) })
-        } }
+        item { LibraryLocationCard(s, vm, navigate) }
         item { Search(query, { query = it }, "搜索备份或应用") }
         item { Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (s.repository == null) "备份集" else "备份集 · ${groups.size}", Modifier.weight(1f), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-            ActionIcon(MiuixIcons.Refresh, "刷新备份库", !s.busy && s.capabilities != null && destination != null, vm::scan)
+            ActionIcon(MiuixIcons.Refresh, "刷新备份库", !s.busy && destination != null, vm::scan)
         } }
-        if (groups.isEmpty()) item { EmptyContent(MiuixIcons.Backup, if (query.isNotEmpty()) "没有匹配的备份" else "暂无备份集",
-            action = if (destination == null) "添加位置" else null, onAction = { navigate(Route.AddLocation) }) }
+        if (groups.isEmpty()) item { EmptyContent(MiuixIcons.Backup, if (query.isNotEmpty()) "没有匹配的备份" else "暂无备份集") }
         items(groups, key = { it.first }) { (id, batch) -> BackupSetRow(batch) { navigate(Route.Batch(id)) } }
         s.repository?.let { repo -> item {
             Text("${if (s.cached) "上次扫描" else "扫描时间"} · ${date(repo.scannedAt)}", Modifier.padding(horizontal = 16.dp),

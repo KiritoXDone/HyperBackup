@@ -5,8 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kiritoxdone.hyperbackup.domain.*
 import io.github.kiritoxdone.hyperbackup.engine.ScriptCatalogReader
+import io.github.kiritoxdone.hyperbackup.engine.InstalledAppsReader
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+
+enum class DestinationState { UNCHECKED, CHECKING, READY, FAILED }
 
 enum class RootConnectionState { UNCHECKED, CHECKING, READY, UNAVAILABLE }
 
@@ -14,6 +17,7 @@ data class AppState(
     val capabilities: Capabilities? = null, val apps: List<AppInstance> = emptyList(), val user: Int = 0,
     val selectedApps: Set<AppKey> = emptySet(), val selectedRecords: Set<String> = emptySet(),
     val destinations: List<Destination> = emptyList(), val destinationId: String? = null,
+    val destinationState: DestinationState = DestinationState.UNCHECKED,
     val repository: ScanResult? = null, val cached: Boolean = false, val tasks: List<TaskSnapshot> = emptyList(),
     val draft: Draft? = null, val plan: Plan? = null, val busy: Boolean = false, val error: String? = null,
     val connectionState: RootConnectionState = RootConnectionState.UNCHECKED, val connectionError: String? = null,
@@ -32,13 +36,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { app.preferences.engine.collect { value -> mutable.update { it.copy(enginePreferences = value) } } }
         action {
             val catalog = withContext(Dispatchers.IO) { ScriptCatalogReader.fromAssets(app) }
+            val reader = InstalledAppsReader(app)
+            val installed = withContext(Dispatchers.IO) { reader.read() }
             val behavior = app.preferences.behavior.first()
             val preferences = app.preferences.engine.first()
             val destinations = session.destinations(); val selected = app.preferences.selectedDestination() ?: destinations.firstOrNull()?.id
             val draft = app.preferences.draft()?.let { runCatching { Wire.json.decodeFromString<Draft>(it) }.getOrNull() }
             mutable.update { it.copy(destinations = destinations, destinationId = selected, tasks = session.cachedHistory(),
                 repository = selected?.let { id -> session.cachedRepository(id) }, cached = true, draft = draft,
-                scriptCatalog = catalog, behavior = behavior, enginePreferences = preferences) }
+                scriptCatalog = catalog, behavior = behavior, enginePreferences = preferences, apps = installed, user = reader.userId) }
             if (behavior.connectOnLaunch) connectEngine()
         }
         viewModelScope.launch {
@@ -85,15 +91,30 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleRecord(id: String) { mutable.update { it.copy(selectedRecords = if (id in it.selectedRecords) it.selectedRecords - id else it.selectedRecords + id) } }
     fun selectDestination(id: String) = action {
         app.preferences.selectDestination(id)
-        mutable.update { it.copy(destinationId = id, repository = session.cachedRepository(id), cached = true, plan = null) }
+        mutable.update { it.copy(destinationId = id, repository = session.cachedRepository(id), cached = true, plan = null, selectedRecords = emptySet(), destinationState = DestinationState.UNCHECKED) }
+        if (state.value.capabilities != null) scanSelected(id)
     }
     fun saveDestination(connection: Connection, create: Boolean, done: () -> Unit) = action {
+        if (state.value.capabilities == null) connectEngine()
+        check(state.value.capabilities != null) { "ROOT_NOT_CONNECTED" }
         val saved = session.saveDestination(connection, create); app.preferences.selectDestination(saved.id)
-        mutable.update { it.copy(destinations = session.destinations(), destinationId = saved.id) }; done()
+        mutable.update { it.copy(destinations = session.destinations(), destinationId = saved.id, repository = session.cachedRepository(saved.id),
+            cached = false, selectedRecords = emptySet(), destinationState = DestinationState.READY) }; done()
     }
     fun scan() = action {
         val id = state.value.destinationId ?: error("请先添加备份位置")
-        val result = session.scan(id); mutable.update { it.copy(repository = result, cached = false) }
+        if (state.value.capabilities == null) connectEngine()
+        check(state.value.capabilities != null) { "ROOT_NOT_CONNECTED" }
+        scanSelected(id)
+    }
+    private suspend fun scanSelected(id: String) {
+        mutable.update { it.copy(destinationState = DestinationState.CHECKING) }
+        try {
+            val result = session.scan(id)
+            mutable.update { it.copy(repository = result, cached = false, destinationState = DestinationState.READY) }
+        } catch (e: Exception) {
+            mutable.update { it.copy(destinationState = DestinationState.FAILED) }; throw e
+        }
     }
     private fun setDraft(draft: Draft) {
         mutable.update { it.copy(draft = draft, plan = null) }
@@ -116,7 +137,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun resetEnginePreferences() { changeEnginePreferences { EnginePreferences() } }
     fun exportSettings(uri: android.net.Uri) = action {
-        val snapshot = SettingsArchive(engine = state.value.enginePreferences, behavior = state.value.behavior)
+        val snapshot = SettingsArchive(engine = state.value.enginePreferences, behavior = state.value.behavior, theme = state.value.theme)
         withContext(Dispatchers.IO) {
             requireNotNull(app.contentResolver.openOutputStream(uri)).bufferedWriter().use { it.write(Wire.json.encodeToString(SettingsArchive.serializer(), snapshot)) }
         }
@@ -169,6 +190,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun changeDraft(change: (Draft) -> Draft) { state.value.draft?.let { setDraft(change(it)) } }
     fun preflight(done: () -> Unit) = action {
+        if (state.value.capabilities == null) connectEngine()
+        check(state.value.capabilities != null) { "ROOT_NOT_CONNECTED" }
         val plan = session.preflight(requireNotNull(state.value.draft))
         mutable.update { it.copy(plan = plan) }; done()
     }

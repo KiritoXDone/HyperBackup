@@ -17,11 +17,12 @@ import org.junit.runner.RunWith
 class LayoutProbeTest {
     @Test(timeout = 180_000) fun mainTabsAndLocationDialog() = withUiTestHost { device ->
         assertNotNull(device.wait(Until.findObject(By.text("首页")), 10000))
-        listOf("应用" to "用户应用", "备份库" to "备份集", "设置" to "备份默认值").forEach { (label, content) ->
+        listOf("应用" to By.desc("应用排序"), "备份库" to By.textStartsWith("备份集"), "设置" to By.text("备份默认值")).forEach { (label, content) ->
             val node = device.findObjects(By.text(label)).last()
             println("TAB $label bounds=${node.visibleBounds}")
             node.click()
-            assertNotNull(device.wait(Until.findObject(By.textStartsWith(content)), 5000))
+            assertNotNull(device.wait(Until.findObject(content), 5000))
+            device.capturePage(label)
             listOf("等待 Root 授权", "正在检查 Root", "Root 已连接", "Root 连接失效").forEach { status ->
                 assertFalse("Root card leaked to $label", device.hasObject(By.text(status)))
             }

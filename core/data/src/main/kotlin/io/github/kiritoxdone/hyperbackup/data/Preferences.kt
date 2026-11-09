@@ -15,6 +15,7 @@ class Preferences(context: Context) {
     suspend fun behavior(value: AppBehavior) { store.edit { it[stringPreferencesKey("app_behavior")] = Wire.json.encodeToString(AppBehavior.serializer(), value) } }
     suspend fun engine(value: EnginePreferences) { store.edit { it[stringPreferencesKey("engine_preferences")] = Wire.json.encodeToString(EnginePreferences.serializer(), value) } }
     suspend fun importSettings(value: SettingsArchive) { store.edit {
+        it[stringPreferencesKey("theme")] = value.theme
         it[stringPreferencesKey("app_behavior")] = Wire.json.encodeToString(AppBehavior.serializer(), value.behavior)
         it[stringPreferencesKey("engine_preferences")] = Wire.json.encodeToString(EnginePreferences.serializer(), value.engine)
     } }
