@@ -127,6 +127,7 @@ def run(sdk, work):
         if report['checks']['abi'] != LOCK['abi']:
             raise AssertionError('Unexpected emulator ABI')
         report['checks']['kernel'] = shell('uname', '-r')
+        report['checks']['page_size'] = int(shell('getconf', 'PAGESIZE'))
         report['checks']['ksu'] = shell('su', '-c', '/data/adb/ksud debug version')
         before = shell('cat', '/proc/sys/kernel/random/boot_id')
         call('reboot')

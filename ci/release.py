@@ -58,6 +58,7 @@ def verify_payload(apk, native):
 
 def package(tag, apk, sdk):
     name, code, output = prepare(tag)
+    subprocess.run(['python3', 'ci/check_native_alignment.py', str(apk)], cwd=ROOT, check=True)
     tools = Path(sdk) / 'build-tools/37.0.0'
     badging = subprocess.check_output([str(tools / 'aapt2'), 'dump', 'badging', apk], text=True)
     expected = f"package: name='io.github.kiritoxdone.hyperbackup' versionCode='{code}' versionName='{name}'"

@@ -91,6 +91,8 @@ jobs:
         run: python3 ci/check_source.py
       - name: Unit contracts, archive attacks, transport failures, lint and APK
         run: bash ci/gradle.sh :core:domain:test :core:engine:testDebugUnitTest :app:lintDebug :app:lintRelease :app:assembleDebug :app:assembleRelease :app:assembleDebugAndroidTest --console=plain
+      - name: Check packaged JNI 16 KB compatibility
+        run: python3 ci/check_native_alignment.py app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/release/*.apk
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -234,6 +236,8 @@ jobs:
           key: avdlite-${{ runner.os }}-${{ hashFiles('ci/avdlite.lock.json') }}
       - name: Build R8 test APKs before starting the emulator
         run: bash ci/gradle.sh -PciUi=true :app:assembleDebug :app:assembleDebugAndroidTest --console=plain
+      - name: Check arm64 and x86_64 JNI 16 KB compatibility
+        run: python3 ci/check_native_alignment.py app/build/outputs/apk/debug/app-debug.apk
       - name: Root, reboot, SELinux, pinned Dex and UI scenarios
         run: python3 ci/avdlite.py run --sdk "$ANDROID_HOME"
       - uses: actions/upload-artifact@v4

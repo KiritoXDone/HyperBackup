@@ -8,6 +8,7 @@
 - Android 28 / 36 模拟器：四入口、首页状态卡隔离、缺少位置弹窗、主题选项、关于页及大字体/暗色场景。模拟器不运行 arm64 Root 业务引擎。
 - AvdLite Android 17 / API 37.2 / x86_64：固定 KernelSU 镜像摘要，冷启动与重启后检查 Root、SELinux Enforcing，执行固定上游 CCUtil Dex 自检及相同 UI 场景；保存镜像 manifest、日志和结果。
 - debug / release 均开启 R8 和资源压缩，构建 APK、lint，保存报告与 mapping。
+- 检查 APK 中每个 JNI 库的 16KB LOAD、RELRO 和未压缩 ZIP 条目对齐；AvdLite 同时验证 arm64/x86_64 打包结果，并记录运行时页大小。
 - `required-checks` 只有全部工作成功才通过；失败、取消和跳过均不能放行。
 
 `Release` 复用完整 Check。推送 `v<versionName>` 标签后校验唯一 changelog 版本段、签名证书、APK 包名/版本/ABI、引擎来源，再一次性发布 APK、SHA-256、provenance 与说明。手动执行只生成已签名产物，不创建 Release。
