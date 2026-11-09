@@ -220,12 +220,18 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: avdlite-cache
         with:
           path: work/avdlite-cache
           key: avdlite-${{ runner.os }}-${{ hashFiles('ci/avdlite.lock.json') }}
       - name: Verify and import pinned KernelSU image
         run: python3 ci/avdlite.py prepare --sdk "$ANDROID_HOME"
+      - uses: actions/cache/save@v4
+        if: steps.avdlite-cache.outputs.cache-hit != 'true'
+        with:
+          path: work/avdlite-cache
+          key: avdlite-${{ runner.os }}-${{ hashFiles('ci/avdlite.lock.json') }}
       - name: Build R8 test APKs before starting the emulator
         run: bash ci/gradle.sh -PciUi=true :app:assembleDebug :app:assembleDebugAndroidTest --console=plain
       - name: Root, reboot, SELinux, pinned Dex and UI scenarios

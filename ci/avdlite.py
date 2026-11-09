@@ -40,9 +40,17 @@ def prepare(sdk, work, cache):
     archive = cache / LOCK['asset']
     if not archive.exists():
         partial = archive.with_suffix('.partial')
-        url = f"{LOCK['source']}/releases/download/{LOCK['release']}/{LOCK['asset']}"
-        subprocess.run(['curl', '--fail', '--location', '--retry', '3', '--max-time', '600',
-                        '--output', str(partial), url], check=True)
+        repository = LOCK['source'].removeprefix('https://github.com/')
+        urls = [f"https://api.github.com/repos/{repository}/releases/assets/{LOCK['asset_id']}",
+                f"{LOCK['source']}/releases/download/{LOCK['release']}/{LOCK['asset']}"]
+        for url in urls:
+            result = subprocess.run(['curl', '--fail', '--location', '--retry', '2', '--connect-timeout', '20',
+                                     '--max-time', '600', '-H', 'Accept: application/octet-stream',
+                                     '--output', str(partial), url])
+            if result.returncode == 0:
+                break
+        else:
+            raise RuntimeError('Both publisher download endpoints failed')
         verify_archive(partial, LOCK['sha256'])
         partial.replace(archive)
     verify_archive(archive, LOCK['sha256'])
