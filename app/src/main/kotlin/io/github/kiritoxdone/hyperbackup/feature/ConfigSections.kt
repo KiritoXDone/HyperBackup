@@ -20,7 +20,7 @@ import top.yukonga.miuix.kmp.preference.*
         notices(s, vm)
         when (group) {
             ConfigGroup.SET -> {
-                item { Card(Modifier.fillMaxWidth()) {
+                item { SurfaceCard(Modifier.fillMaxWidth()) {
                     RadioButtonPreference("新建备份集", spec.setMode == BackupSetMode.NEW, { update { it.copy(setMode = BackupSetMode.NEW) } }, summary = "默认。保留已有备份，生成独立的新备份集。")
                     RadioButtonPreference("更新已有备份集", spec.setMode == BackupSetMode.UPDATE, { update { it.copy(setMode = BackupSetMode.UPDATE) } }, summary = "比较所选备份集并跳过未变化内容。")
                 } }
@@ -30,12 +30,12 @@ import top.yukonga.miuix.kmp.preference.*
                 if (spec.selectedApps.isNotEmpty()) item { InfoCard("已选应用", "${spec.selectedApps.size} 个应用\n来源用户：${spec.selectedApps.map { it.userId }.distinct().joinToString()}") }
                 else {
                     item { SectionLabel(if (spec.command.restore) "目标用户" else "来源用户") }
-                    item { Card(Modifier.fillMaxWidth()) {
+                    item { SurfaceCard(Modifier.fillMaxWidth()) {
                         s.capabilities?.users.orEmpty().forEach { user -> RadioButtonPreference("${user.name} · ${user.id}", user.id == spec.userId,
                             { update { it.copy(userId = user.id) }; vm.changeDraft { d -> d.copy(items = d.items.map { it.copy(app = it.app.copy(userId = user.id)) }) } }, enabled = user.unlocked) }
                     } }
                     item { TextField(spec.selectedPackages.joinToString("\n"), { text -> update { it.copy(selectedPackages = text.lines().flatMap { it.split(',') }.map(String::trim).filter(String::isNotEmpty).distinct()) } }, Modifier.fillMaxWidth(), label = "限定包名（可留空，执行时选择）") }
-                    item { Card(Modifier.fillMaxWidth()) { SwitchPreference(spec.preserveExistingList, { checked -> update { it.copy(preserveExistingList = checked) } }, "采用已有清单", summary = "保留现有清单中的选择和标记。") } }
+                    item { SurfaceCard(Modifier.fillMaxWidth()) { SwitchPreference(spec.preserveExistingList, { checked -> update { it.copy(preserveExistingList = checked) } }, "采用已有清单", summary = "保留现有清单中的选择和标记。") } }
                 }
                 if (spec.command.restore || spec.command.group() == ToolGroup.MAINTENANCE || spec.command == ScriptCommand.UPLOAD_EXISTING) {
                     item { SectionLabel("备份来源") }
@@ -43,17 +43,17 @@ import top.yukonga.miuix.kmp.preference.*
                 }
             }
             ConfigGroup.SAFETY -> {
-                item { Card(Modifier.fillMaxWidth()) {
+                item { SurfaceCard(Modifier.fillMaxWidth()) {
                     SwitchPreference(draft.safetyCopy, { checked -> vm.changeDraft { it.copy(safetyCopy = checked) } }, "恢复前保存副本", summary = "副本保存成功后开始恢复。")
                     if (draft.safetyCopy) ArrowPreference("保存位置", summary = s.destinations.find { it.id == draft.safetyDestinationId }?.name ?: "请选择", onClick = { navigate(Route.ConfigLocation(true)) })
                 } }
             }
             else -> {
-                if (group == ConfigGroup.CONTENT && !spec.command.restore) item { Card(Modifier.fillMaxWidth()) {
+                if (group == ConfigGroup.CONTENT && !spec.command.restore) item { SurfaceCard(Modifier.fillMaxWidth()) {
                     SwitchPreference(spec.associatedWifi, { checked -> update { it.copy(associatedWifi = checked) } }, "关联 Wi-Fi 备份", summary = "与本次应用备份一起保存 Wi-Fi 配置。")
                 } }
                 val fields = s.configFields().filter { configGroup(it.key) == group }
-                item { Card(Modifier.fillMaxWidth()) {
+                item { SurfaceCard(Modifier.fillMaxWidth()) {
                     fields.forEach { field ->
                         val current = fieldValue(s, field)
                         if (field.options.isNotEmpty()) OverlaySpinnerPreference(title = settingLabel(field),
@@ -75,7 +75,7 @@ import top.yukonga.miuix.kmp.preference.*
     var value by rememberSaveable(key) { mutableStateOf(fieldValue(s, field)) }
     fun save(next: String) { vm.changeDraft { it.copy(script = requireNotNull(it.script).let { spec -> spec.copy(config = spec.config + (key to next)) }) }; back() }
     PageList(padding) {
-        if (field.options.isNotEmpty()) item { Card(Modifier.fillMaxWidth()) {
+        if (field.options.isNotEmpty()) item { SurfaceCard(Modifier.fillMaxWidth()) {
             field.options.forEach { option -> RadioButtonPreference(option.getOrElse(1) { option[0] }, value == option[0], { save(option[0]) }) }
         } } else {
             item { TextField(value, { value = it }, Modifier.fillMaxWidth(), label = settingLabel(field),

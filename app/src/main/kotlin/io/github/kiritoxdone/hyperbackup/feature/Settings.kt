@@ -25,29 +25,42 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
 
 @Composable fun SettingsPage(s: AppState, vm: AppViewModel, padding: PaddingValues, navigate: (Route) -> Unit) {
-    val context = LocalContext.current
     val themes = listOf("system", "light", "dark")
     PageList(padding) {
+        item { SectionLabel("环境") }
+        item { SurfaceCard {
+            ArrowPreference("Root", summary = if (s.connectionState == RootConnectionState.READY) "已连接" else "未连接",
+                onClick = { navigate(Route.Runtime) })
+            ArrowPreference("用户", summary = s.capabilities?.users?.joinToString { it.name } ?: "用户 ${s.user}", onClick = { navigate(Route.Users) })
+        } }
         item { SectionLabel("备份与恢复") }
-        item { Card(Modifier.fillMaxWidth()) {
-            ArrowPreference("备份位置", summary = s.destinations.find { it.id == s.destinationId }?.name,
-                startAction = { LeadingIcon(MiuixIcons.Folder) }, onClick = { navigate(Route.Locations) })
-            SettingsGroup.entries.forEach { group ->
-                ArrowPreference(group.title, startAction = { LeadingIcon(group.icon()) }, onClick = { navigate(Route.Defaults(group)) })
+        item { SurfaceCard {
+            ArrowPreference("备份位置", summary = s.destinations.find { it.id == s.destinationId }?.address, onClick = { navigate(Route.Locations) })
+            listOf(SettingsGroup.BACKUP, SettingsGroup.RESTORE, SettingsGroup.COMPRESSION).forEach { group ->
+                ArrowPreference(group.title, onClick = { navigate(Route.Defaults(group)) })
             }
+            SwitchPreference(s.behavior.showSystemApps, { value -> vm.changeBehavior { it.copy(showSystemApps = value) } }, "显示系统应用")
         } }
-        item { SectionLabel("应用") }
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SectionLabel("管理") }
+        item { SurfaceCard {
+            ArrowPreference("标签与黑名单", onClick = { navigate(Route.Labels) })
+            ArrowPreference("名单与排除", onClick = { navigate(Route.Defaults(SettingsGroup.SELECTION)) })
+            ArrowPreference("云端位置", onClick = { navigate(Route.Cloud) })
+            ArrowPreference("配置管理", onClick = { navigate(Route.SettingsTransfer) })
+            ArrowPreference("运行与日志", onClick = { navigate(Route.Defaults(SettingsGroup.EXECUTION)) })
+            ArrowPreference("更多功能", onClick = { navigate(Route.Tools) })
+        } }
+        item { SectionLabel("外观与行为") }
+        item { SurfaceCard {
             OverlaySpinnerPreference(items = listOf(DropdownItem("跟随系统"), DropdownItem("浅色"), DropdownItem("深色")),
-                selectedIndex = themes.indexOf(s.theme).coerceAtLeast(0), title = "主题", startAction = { LeadingIcon(MiuixIcons.Theme) },
-                onSelectedIndexChange = { vm.theme(themes[it]) })
-            ArrowPreference("应用行为", startAction = { LeadingIcon(MiuixIcons.Settings) }, onClick = { navigate(Route.AppBehavior) })
-            ArrowPreference("配置管理", startAction = { LeadingIcon(MiuixIcons.Import) }, onClick = { navigate(Route.SettingsTransfer) })
-            ArrowPreference("通知", startAction = { LeadingIcon(MiuixIcons.Notes) }, onClick = {
-                context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
-            })
-            ArrowPreference("关于", summary = BuildConfig.VERSION_NAME, startAction = { LeadingIcon(MiuixIcons.Info) }, onClick = { navigate(Route.About) })
+                selectedIndex = themes.indexOf(s.theme).coerceAtLeast(0), title = "主题", onSelectedIndexChange = { vm.theme(themes[it]) })
+            SwitchPreference(s.behavior.dynamicColor, { value -> vm.changeBehavior { it.copy(dynamicColor = value) } }, "动态配色")
+            ArrowPreference("引擎语言", onClick = { navigate(Route.DefaultField("Shell_LANG", null)) })
+            SwitchPreference(s.behavior.completionNotification, { value -> vm.changeBehavior { it.copy(completionNotification = value) } }, "任务完成通知")
+            ArrowPreference("应用行为", onClick = { navigate(Route.AppBehavior) })
         } }
+        item { SectionLabel("关于") }
+        item { SurfaceCard { ArrowPreference("关于 HyperBackup", summary = BuildConfig.VERSION_NAME, onClick = { navigate(Route.About) }) } }
     }
 }
 @Composable fun RuntimePage(s: AppState, padding: PaddingValues) {
@@ -64,47 +77,6 @@ import top.yukonga.miuix.kmp.icon.extended.*
         s.connectionError?.let { error -> item { InfoCard("诊断详情", error) } }
     }
 }
-@Composable fun LocationsPage(s: AppState, vm: AppViewModel, padding: PaddingValues, navigate: (Route) -> Unit) {
-    PageList(padding) {
-        notices(s, vm)
-        items(s.destinations, key = { it.id }) { d -> Card {
-            RadioButtonPreference(title = d.name, summary = "${d.protocol} · ${d.address}\n${when { d.protocol == Protocol.LOCAL -> "仍在手机中，刷机可能清除"; d.allowHttp -> "HTTP · 未加密传输"; d.protocol == Protocol.SMB -> "SMB2/3 · 签名，传输加密未承诺"; else -> "HTTPS · 校验证书" }}",
-                selected = s.destinationId == d.id, onClick = { vm.selectDestination(d.id) }, enabled = !s.busy)
-        } }
-        item { PrimaryAction("添加位置", !s.busy) { navigate(Route.AddLocation) } }
-    }
-}
-@Composable fun AddLocationPage(s: AppState, vm: AppViewModel, padding: PaddingValues, done: () -> Unit) {
-    var protocol by rememberSaveable { mutableStateOf(Protocol.LOCAL) }
-    var name by rememberSaveable { mutableStateOf("手机备份") }
-    var address by rememberSaveable { mutableStateOf("/storage/emulated/0/HyperBackup") }
-    var username by rememberSaveable { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var domain by rememberSaveable { mutableStateOf("") }
-    var http by rememberSaveable { mutableStateOf(false) }
-    var create by rememberSaveable { mutableStateOf(false) }
-    PageList(padding) {
-        notices(s, vm)
-        item { Card {
-            Protocol.entries.forEach { type -> RadioButtonPreference(title = type.name, selected = protocol == type, onClick = {
-                protocol = type; name = when (type) { Protocol.LOCAL -> "手机备份"; Protocol.SMB -> "家庭 NAS"; Protocol.WEBDAV -> "WebDAV" }
-                address = when (type) { Protocol.LOCAL -> "/storage/emulated/0/HyperBackup"; Protocol.SMB -> "smb://"; Protocol.WEBDAV -> "https://" }
-            }) }
-        } }
-        item { TextField(name, { name = it }, Modifier.fillMaxWidth(), label = "位置名称", singleLine = true) }
-        item { TextField(address, { address = it }, Modifier.fillMaxWidth(), label = if (protocol == Protocol.LOCAL) "目录绝对路径" else if (protocol == Protocol.SMB) "smb://主机/共享名/目录" else "https://主机/目录", singleLine = true) }
-        if (protocol != Protocol.LOCAL) {
-            item { TextField(username, { username = it }, Modifier.fillMaxWidth(), label = "用户名", singleLine = true) }
-            item { TextField(password, { password = it }, Modifier.fillMaxWidth(), label = "密码", singleLine = true, visualTransformation = PasswordVisualTransformation()) }
-        }
-        if (protocol == Protocol.SMB) item { TextField(domain, { domain = it }, Modifier.fillMaxWidth(), label = "域（可留空）", singleLine = true) }
-        if (protocol == Protocol.WEBDAV) item { Card { SwitchPreference(http, { http = it }, "允许 HTTP", summary = "显式启用未加密传输；证书错误不会自动忽略。") } }
-        item { Card { SwitchPreference(create, { create = it }, "创建新仓库", summary = "默认连接已有仓库。创建要求空目录；远端目录需先在服务器创建。") } }
-        item { PrimaryAction(if (create) "检查并创建仓库" else "连接并读取清单", !s.busy && name.isNotBlank() && address.isNotBlank()) {
-            vm.saveDestination(Connection(Destination(name = name.trim(), protocol = protocol, address = address.trim().trimEnd('/'), username = username, domain = domain, allowHttp = http), password), create, done)
-        } }
-    }
-}
 @Composable fun AboutPage(padding: PaddingValues, navigate: (Route) -> Unit) {
     val context = LocalContext.current
     val icon = remember(context) { context.packageManager.getApplicationIcon(context.packageName).toBitmap(192, 192).asImageBitmap() }
@@ -115,12 +87,12 @@ import top.yukonga.miuix.kmp.icon.extended.*
             Text("HyperBackup", Modifier.padding(top = 16.dp), fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
             Text("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", Modifier.padding(top = 4.dp), color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurfaceVariantSummary)
         } }
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SurfaceCard(Modifier.fillMaxWidth()) {
             ArrowPreference("项目主页", summary = "KiritoXDone / HyperBackup", onClick = { open("") })
             ArrowPreference("问题反馈", onClick = { open("/issues") })
             ArrowPreference("发行版本", onClick = { open("/releases") })
         } }
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SurfaceCard(Modifier.fillMaxWidth()) {
             ArrowPreference("许可证", summary = "GPL-3.0-only", onClick = { navigate(Route.License) })
             ArrowPreference("开源组件", onClick = { navigate(Route.OpenSource) })
             ArrowPreference("运行环境", onClick = { navigate(Route.Runtime) })
@@ -135,7 +107,7 @@ import top.yukonga.miuix.kmp.icon.extended.*
 @Composable fun OpenSourcePage(padding: PaddingValues) {
     val context = LocalContext.current
     PageList(padding) {
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SurfaceCard(Modifier.fillMaxWidth()) {
             listOf(
                 Triple("backup_script", "v1117 · GPL-3.0-only", "https://github.com/YAWAsau/backup_script/tree/${Wire.UPSTREAM}"),
                 Triple("Miuix", "0.9.4 · Apache-2.0", "https://github.com/compose-miuix-ui/miuix"),

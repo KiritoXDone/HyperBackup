@@ -23,13 +23,13 @@ import top.yukonga.miuix.kmp.window.WindowDialog
     val values = ScriptPreferences.effective(catalog, s.enginePreferences, profile)
     val fields = catalog.fields.filter { ScriptPreferences.editable(it.key) && settingsGroup(it.key) == group }
     PageList(padding) {
-        if (group == SettingsGroup.BACKUP) item { Card(Modifier.fillMaxWidth()) {
+        if (group == SettingsGroup.BACKUP) item { SurfaceCard(Modifier.fillMaxWidth()) {
             SwitchPreference(s.enginePreferences.associatedWifi, { value -> vm.changeEnginePreferences { it.copy(associatedWifi = value) } }, "关联 Wi-Fi")
         } }
-        if (group == SettingsGroup.RESTORE) item { Card(Modifier.fillMaxWidth()) {
+        if (group == SettingsGroup.RESTORE) item { SurfaceCard(Modifier.fillMaxWidth()) {
             SwitchPreference(s.enginePreferences.safetyCopy, { value -> vm.changeEnginePreferences { it.copy(safetyCopy = value) } }, "恢复前副本")
         } }
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SurfaceCard(Modifier.fillMaxWidth()) {
             fields.forEach { field ->
                 val value = values[field.key].orEmpty()
                 val enabled = !s.busy && !(values["Backup_Mode"] == "0" && field.key in setOf("Backup_user_data", "Backup_obb_data")) &&
@@ -61,14 +61,14 @@ import top.yukonga.miuix.kmp.window.WindowDialog
 @Composable fun AppBehaviorPage(s: AppState, vm: AppViewModel, padding: PaddingValues) {
     PageList(padding) {
         item { SectionLabel("应用列表") }
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SurfaceCard(Modifier.fillMaxWidth()) {
             SwitchPreference(s.behavior.showPackageNames, { value -> vm.changeBehavior { it.copy(showPackageNames = value) } }, "显示包名")
             SwitchPreference(s.behavior.showSystemApps, { value -> vm.changeBehavior { it.copy(showSystemApps = value) } }, "显示系统应用")
             OverlaySpinnerPreference(title = "默认排序", items = listOf(DropdownItem("名称"), DropdownItem("包名")),
                 selectedIndex = s.behavior.appSort.ordinal, onSelectedIndexChange = { index -> vm.changeBehavior { it.copy(appSort = AppSort.entries[index]) } })
         } }
         item { SectionLabel("任务") }
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SurfaceCard(Modifier.fillMaxWidth()) {
             SwitchPreference(s.behavior.connectOnLaunch, { value -> vm.changeBehavior { it.copy(connectOnLaunch = value) } }, "启动时检查 Root")
             SwitchPreference(s.behavior.keepScreenOnDuringTask, { value -> vm.changeBehavior { it.copy(keepScreenOnDuringTask = value) } }, "任务期间保持亮屏")
             SwitchPreference(s.behavior.completionNotification, { value -> vm.changeBehavior { it.copy(completionNotification = value) } }, "完成通知")
@@ -81,7 +81,7 @@ import top.yukonga.miuix.kmp.window.WindowDialog
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(vm::importSettings) }
     var reset by rememberSaveable { mutableStateOf(false) }
     PageList(padding) {
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SurfaceCard(Modifier.fillMaxWidth()) {
             ArrowPreference("导出配置", startAction = { LeadingIcon(MiuixIcons.Send) }, onClick = { export.launch("HyperBackup-settings.json") }, enabled = !s.busy)
             ArrowPreference("导入配置", startAction = { LeadingIcon(MiuixIcons.Import) }, onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) }, enabled = !s.busy)
             ArrowPreference("恢复默认设置", startAction = { LeadingIcon(MiuixIcons.Reset) }, onClick = { reset = true }, enabled = !s.busy)

@@ -1,11 +1,16 @@
 package io.github.kiritoxdone.hyperbackup.feature
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -21,6 +26,13 @@ import top.yukonga.miuix.kmp.window.WindowDialog
 
 @Serializable sealed interface Route : NavKey {
     @Serializable data object Main : Route
+    @Serializable data object Library : Route
+    @Serializable data object Cloud : Route
+    @Serializable data object Users : Route
+    @Serializable data object Labels : Route
+    @Serializable data class LabelApps(val name: String) : Route
+    @Serializable data class EditLocation(val id: String) : Route
+    @Serializable data object AddCloud : Route
     @Serializable data object SelectApps : Route
     @Serializable data class AppDetail(val user: Int, val pkg: String) : Route
     @Serializable data object Config : Route
@@ -58,37 +70,56 @@ import top.yukonga.miuix.kmp.window.WindowDialog
     NavDisplay(backStack = backStack, onBack = back) {
         entry<Route.Main> {
             tabStates.SaveableStateProvider(tab) {
-            PageShell(listOf("备份", "应用", "备份库", "设置")[tab], bottom = {
-                NavigationBar {
-                    listOf(MiuixIcons.Home, MiuixIcons.GridView, MiuixIcons.Backup, MiuixIcons.Settings).forEachIndexed { index, icon ->
-                        NavigationBarItem(tab == index, { vm.clearError(); tab = index }, icon, listOf("首页", "应用", "备份库", "设置")[index],
-                            colors = NavigationBarDefaults.navigationBarItemColors(selectedContentColor = MiuixTheme.colorScheme.onSurface,
-                                unselectedContentColor = MiuixTheme.colorScheme.onSurface))
+                PageShell(listOf("HyperBackup", "历史", "云端", "设置")[tab], bottom = {
+                    NavigationBar(color = MiuixTheme.colorScheme.surfaceContainer) {
+                        listOf(HyperIcons.Home, HyperIcons.History, HyperIcons.Cloud, HyperIcons.Settings).forEachIndexed { index, icon ->
+                            NavigationBarItem(tab == index, { vm.clearError(); tab = index }, icon, listOf("首页", "历史", "云端", "设置")[index],
+                                colors = NavigationBarDefaults.navigationBarItemColors(selectedContentColor = MiuixTheme.colorScheme.primary,
+                                    unselectedContentColor = MiuixTheme.colorScheme.onSurfaceVariantSummary))
+                        }
+                    }
+                }, actions = {
+                    when (tab) {
+                        0 -> ActionIcon(MiuixIcons.Info, "关于 HyperBackup", onClick = { push(Route.About) })
+                        1 -> ActionIcon(MiuixIcons.Refresh, "刷新任务", !state.busy, vm::refreshTasks)
+                        2 -> ActionIcon(MiuixIcons.Add, "添加云端位置", onClick = { push(Route.AddCloud) })
+                    }
+                }) { padding ->
+                    when (tab) {
+                        0 -> HomePage(state, vm, padding, ::push) { push(Route.Library) }
+                        1 -> TasksPage(state, vm, padding, ::push)
+                        2 -> CloudPage(state, vm, padding, ::push)
+                        3 -> SettingsPage(state, vm, padding, ::push)
                     }
                 }
-            }, actions = {
-                when (tab) {
-                    0 -> ActionIcon(MiuixIcons.Recent, "任务中心", onClick = { push(Route.Tasks) })
-                    1 -> AppsToolbar(state, vm)
-                    2 -> ActionIcon(MiuixIcons.AddCircle, "添加备份位置", onClick = { push(Route.AddLocation) })
-                }
-            }) { padding ->
-                when (tab) {
-                    0 -> HomePage(state, vm, padding, ::push, { tab = 2 })
-                    1 -> AppsPage(state, vm, padding, false, ::push)
-                    2 -> LibraryPage(state, vm, padding, ::push)
-                    3 -> SettingsPage(state, vm, padding, ::push)
-                }
             }
         }
-            }
         entry<Route.SelectApps> {
-            PageShell("选择应用", back, bottom = { BottomAction("下一步 · 已选 ${state.selectedApps.size}", state.selectedApps.isNotEmpty() && !state.busy) {
-                vm.beginBackup(); if (vm.state.value.draft != null) push(Route.Config)
-            } }) { AppsPage(state, vm, it, true, ::push) }
+            var files by rememberSaveable { mutableStateOf(false) }
+            var paths by rememberSaveable { mutableStateOf(state.enginePreferences.backup["Custom_path"] ?: state.scriptCatalog?.backupDefaults?.get("Custom_path").orEmpty()) }
+            var visible by remember { mutableStateOf<List<AppKey>>(emptyList()) }
+            val targetStates = rememberSaveableStateHolder()
+            PageShell("备份", back, subtitle = if (files) "文件夹" else "已选 ${state.selectedApps.size} 个应用", bottom = {
+                SelectionActions(state, vm, files, paths, visible) { push(Route.Config) }
+            }, actions = { if (!files) AppsToolbar(state, vm) }) {
+                val padding = it
+                targetStates.SaveableStateProvider(files) {
+                    if (files) FileSelectionPage(padding, paths, { paths = it }, { files = it })
+                    else AppsPage(state, vm, padding, true, ::push, onFiles = { files = true }, onVisibleApps = { visible = it })
+                }
+            }
         }
+        entry<Route.Library> { PageShell("恢复", back, actions = {
+            ActionIcon(MiuixIcons.Refresh, "刷新备份库", !state.busy, vm::scan)
+        }) { LibraryPage(state, vm, it, ::push) } }
+        entry<Route.Cloud> { PageShell("云端", back, actions = { ActionIcon(MiuixIcons.Add, "添加云端位置", onClick = { push(Route.AddCloud) }) }) { CloudPage(state, vm, it, ::push) } }
+        entry<Route.Users> { PageShell("用户", back) { UsersPage(state, vm, it) } }
+        entry<Route.Labels> { PageShell("标签与黑名单", back) { LabelsPage(state, vm, it, ::push) } }
+        entry<Route.LabelApps> { route -> PageShell(route.name, back) { AppsPage(state, vm, it, true, ::push, label = route.name) } }
+        entry<Route.AddCloud> { PageShell("添加云端位置", back) { AddLocationPage(state, vm, it, back, remoteOnly = true) } }
+        entry<Route.EditLocation> { route -> PageShell("编辑位置", back) { AddLocationPage(state, vm, it, back, editId = route.id) } }
         entry<Route.AppDetail> { route ->
-            PageShell("应用详情", back) { AppDetailPage(state, vm, it, AppKey(route.user, route.pkg), ::push) }
+            PageShell("应用详情", back, showTitle = false) { AppDetailPage(state, vm, it, AppKey(route.user, route.pkg), ::push) }
         }
         entry<Route.Locations> { PageShell("备份位置", back) { LocationsPage(state, vm, it, ::push) } }
         entry<Route.AddLocation> { PageShell("添加位置", back) { AddLocationPage(state, vm, it, back) } }
@@ -107,7 +138,7 @@ import top.yukonga.miuix.kmp.window.WindowDialog
         } } }
         entry<Route.Editor> { route -> PageShell("选择内容", back) { NativeEditorPage(state, vm, it, route.taskId, back) } }
         entry<Route.Tasks> { PageShell("任务中心", back) { TasksPage(state, vm, it, ::push) } }
-        entry<Route.Task> { route -> PageShell("任务详情", back) { TaskPage(state, vm, it, route.id, ::push) } }
+        entry<Route.Task> { route -> PageShell(state.tasks.find { it.id == route.id }?.state?.label() ?: "任务详情", back) { TaskPage(state, vm, it, route.id, ::push) } }
         entry<Route.Batch> { route -> PageShell("备份批次", back) { BatchPage(state, vm, it, route.id, ::push) } }
         entry<Route.Record> { route -> PageShell("备份版本", back) { RecordPage(state, vm, it, route.id, ::push) } }
         entry<Route.ToolsInGroup> { route -> PageShell(route.group.title, back) { ToolGroupPage(state, vm, it, route.group, ::push) } }
@@ -137,18 +168,30 @@ import top.yukonga.miuix.kmp.window.WindowDialog
 }
 
 @Composable fun PageShell(title: String, back: (() -> Unit)? = null, bottom: @Composable () -> Unit = {},
-    actions: @Composable RowScope.() -> Unit = {}, content: @Composable (PaddingValues) -> Unit) {
-    val scroll = MiuixScrollBehavior()
-    Scaffold(Modifier.fillMaxSize().nestedScroll(scroll.nestedScrollConnection).imePadding(),
-        topBar = {
-            if (back == null) TopAppBar(title, scrollBehavior = scroll, actions = actions)
-            else SmallTopAppBar(title, scrollBehavior = scroll, navigationIcon = {
+    actions: @Composable RowScope.() -> Unit = {}, subtitle: String? = null, showTitle: Boolean = true,
+    content: @Composable (PaddingValues) -> Unit) {
+    Scaffold(Modifier.fillMaxSize().imePadding(), topBar = {
+        Column(Modifier.statusBarsPadding().fillMaxWidth()) {
+            if (back != null) Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp).heightIn(min = 48.dp),
+                verticalAlignment = Alignment.CenterVertically) {
                 ActionIcon(MiuixIcons.Back, "返回", onClick = back)
-            }, actions = actions)
-        }, bottomBar = bottom, content = content)
+                Spacer(Modifier.weight(1f)); actions()
+            }
+            if (showTitle) Row(Modifier.fillMaxWidth().padding(start = 28.dp, end = 12.dp, top = if (back == null) 8.dp else 0.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, fontSize = 34.sp, fontWeight = FontWeight.Bold, lineHeight = 40.sp)
+                    if (subtitle != null) Text(subtitle, Modifier.padding(top = 3.dp), style = MiuixTheme.textStyles.body2,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                }
+                if (back == null) actions()
+            }
+        }
+    }, bottomBar = bottom, content = content)
 }
 @Composable fun BottomAction(text: String, enabled: Boolean, action: () -> Unit) {
-    Column(Modifier.navigationBarsPadding().padding(16.dp)) { PrimaryAction(text, enabled, action) }
+    Column(Modifier.fillMaxWidth().background(MiuixTheme.colorScheme.surfaceContainer).navigationBarsPadding()
+        .padding(horizontal = 16.dp, vertical = 10.dp)) { PrimaryAction(text, enabled, action) }
 }
 @Suppress("UNUSED_PARAMETER")
 fun LazyListScope.notices(state: AppState, vm: AppViewModel, navigate: ((Route) -> Unit)? = null) {

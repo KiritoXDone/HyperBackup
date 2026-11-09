@@ -49,7 +49,7 @@ import top.yukonga.miuix.kmp.preference.*
                 TextButton("清空筛选结果", { selected = selected - visible.map { it.id }.toSet() }, enabled = !s.busy)
             } }
             items(visible, key = { it.id }) { row ->
-                Card {
+                SurfaceCard {
                     CheckboxPreference(title = row.label, summary = row.packageName, checked = row.id in selected,
                         onCheckedChange = { checked -> selected = if (checked) selected + row.id else selected - row.id }, enabled = !s.busy)
                     if (editor.mode in setOf("apps", "backup", "restore")) SwitchPreference(row.id in apkOnly,
@@ -58,19 +58,19 @@ import top.yukonga.miuix.kmp.preference.*
             }
             if (mapsSelected && sourceRows.isNotEmpty()) {
                 item { SectionLabel("Maps 时间轴") }
-                item { Card {
+                item { SurfaceCard {
                     listOf("match" to "只恢复匹配的当前账号", "account" to "指定同一账号", "cross" to "一个来源映射到目标账号", "merge" to "多个来源合并到目标账号").forEach { (key, label) ->
                         RadioButtonPreference(label, timelineMode == key, { timelineMode = key; sources = emptyList(); target = "" })
                     }
                 } }
                 if (timelineMode != "match") {
-                    items(targets, key = { "target-${it["id"]}" }) { account -> Card {
+                    items(targets, key = { "target-${it["id"]}" }) { account -> SurfaceCard {
                         val id = account.getValue("id").jsonPrimitive.content
                         RadioButtonPreference("目标：${account.getValue("label").jsonPrimitive.content}", target == id, { target = id })
                     } }
                 }
                 if (timelineMode in setOf("cross", "merge")) {
-                    items(sourceRows, key = { "source-${it["id"]}" }) { account -> Card {
+                    items(sourceRows, key = { "source-${it["id"]}" }) { account -> SurfaceCard {
                         val id = account.getValue("id").jsonPrimitive.content
                         CheckboxPreference(title = "来源：${account.getValue("label").jsonPrimitive.content}", checked = id in sources,
                             onCheckedChange = { checked -> sources = if (!checked) sources - id else if (timelineMode == "cross") listOf(id) else sources + id })

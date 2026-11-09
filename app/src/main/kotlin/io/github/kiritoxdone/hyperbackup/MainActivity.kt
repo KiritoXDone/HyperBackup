@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
         if (android.os.Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         setContent {
             val state by model.state.collectAsStateWithLifecycle()
-            HyperTheme(state.theme) {
+            HyperTheme(state.theme, state.behavior.dynamicColor) {
                 val lightBars = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface.luminance() > 0.5f
                 DisposableEffect(lightBars) {
                     WindowCompat.getInsetsController(window, window.decorView).apply {

@@ -16,11 +16,20 @@ import io.github.kiritoxdone.hyperbackup.domain.*
 import java.text.DateFormat
 import java.util.Date
 
-@Composable fun HyperTheme(mode: String, content: @Composable () -> Unit) {
-    val controller = remember(mode) { ThemeController(when (mode) { "light" -> ColorSchemeMode.Light; "dark" -> ColorSchemeMode.Dark; else -> ColorSchemeMode.System }) }
+@Composable fun HyperTheme(mode: String, dynamic: Boolean = false, content: @Composable () -> Unit) {
+    val controller = remember(mode, dynamic) { ThemeController(
+        when { dynamic && mode == "light" -> ColorSchemeMode.MonetLight; dynamic && mode == "dark" -> ColorSchemeMode.MonetDark
+            dynamic -> ColorSchemeMode.MonetSystem; mode == "light" -> ColorSchemeMode.Light; mode == "dark" -> ColorSchemeMode.Dark; else -> ColorSchemeMode.System },
+        lightColors = lightColorScheme(primary = Color(0xFF2F6FEB), primaryVariant = Color(0xFF2F6FEB),
+            primaryContainer = Color(0xFF2F6FEB), onPrimaryContainer = Color.White,
+            tertiaryContainer = Color(0xFFE8F0FE), onTertiaryContainer = Color(0xFF1F56C4),
+            secondaryVariant = Color(0xFFEEF0F3), secondaryContainer = Color(0xFFE9EBEE),
+            onSurfaceVariantSummary = Color(0xFF666B72), onSurfaceVariantActions = Color(0xFF9AA0A6),
+            dividerLine = Color(0xFFECEDEF)),
+        darkColors = darkColorScheme(primary = Color(0xFF85AEFF), onPrimary = Color(0xFF10264B), primaryVariant = Color(0xFF85AEFF))) }
     MiuixTheme(controller = controller, content = content)
 }
-@Composable fun PageList(padding: PaddingValues, content: LazyListScope.() -> Unit) {
+@Composable fun PageList(padding: PaddingValues, spacing: androidx.compose.ui.unit.Dp = 12.dp, content: LazyListScope.() -> Unit) {
     val direction = androidx.compose.ui.platform.LocalLayoutDirection.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val extra = ((maxWidth - 720.dp) / 2).coerceAtLeast(0.dp)
@@ -28,9 +37,9 @@ import java.util.Date
             contentPadding = PaddingValues(
                 start = padding.calculateStartPadding(direction) + extra + 12.dp,
                 end = padding.calculateEndPadding(direction) + extra + 12.dp,
-                top = padding.calculateTopPadding() + 12.dp,
+                top = padding.calculateTopPadding(),
                 bottom = padding.calculateBottomPadding() + 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+            verticalArrangement = Arrangement.spacedBy(spacing), content = content)
     }
 }
 @Composable fun SectionLabel(text: String) {
@@ -38,14 +47,18 @@ import java.util.Date
         style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
 }
 @Composable fun InfoCard(title: String, description: String, modifier: Modifier = Modifier) {
-    Card(modifier.fillMaxWidth(), insideMargin = PaddingValues(16.dp)) {
+    Card(modifier.fillMaxWidth(), cornerRadius = 16.dp, insideMargin = PaddingValues(16.dp)) {
         Text(title, style = MiuixTheme.textStyles.headline1)
         if (description.isNotEmpty()) Text(description, Modifier.padding(top = 4.dp), style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
     }
 }
 @Composable fun Search(value: String, onChange: (String) -> Unit, placeholder: String) {
-    InputField(query = value, onQueryChange = onChange, onSearch = {}, expanded = false, onExpandedChange = {},
-        modifier = Modifier.fillMaxWidth(), label = placeholder)
+    TextField(value = value, onValueChange = onChange, modifier = Modifier.fillMaxWidth(),
+        label = placeholder, singleLine = true, useLabelAsPlaceholder = true, cornerRadius = 16.dp,
+        insideMargin = androidx.compose.ui.unit.DpSize(14.dp, 12.dp),
+        colors = TextFieldDefaults.textFieldColors(backgroundColor = MiuixTheme.colorScheme.surfaceContainer,
+            labelColor = MiuixTheme.colorScheme.onSurfaceVariantSummary),
+        leadingIcon = { Icon(HyperIcons.Search, null, Modifier.size(22.dp), tint = MiuixTheme.colorScheme.onSurfaceVariantActions) })
 }
 @Composable fun InlineAction(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     TextButton(text, onClick, enabled = enabled, minHeight = 48.dp,
@@ -68,7 +81,7 @@ import java.util.Date
     }
 }
 @Composable fun PrimaryAction(text: String, enabled: Boolean = true, onClick: () -> Unit) {
-    TextButton(text, onClick, Modifier.fillMaxWidth().heightIn(min = 52.dp), enabled = enabled,
+    TextButton(text, onClick, Modifier.fillMaxWidth().heightIn(min = 48.dp), enabled = enabled,
         colors = ButtonDefaults.textButtonColorsPrimary())
 }
 fun date(timestamp: Long): String = if (timestamp <= 0) "时间未知" else DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(timestamp))

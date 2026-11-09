@@ -15,7 +15,7 @@ import top.yukonga.miuix.kmp.preference.*
 @Composable fun ScriptToolsPage(s: AppState, vm: AppViewModel, padding: PaddingValues, navigate: (Route) -> Unit) {
     PageList(padding) {
         notices(s, vm)
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SurfaceCard(Modifier.fillMaxWidth()) {
             ToolGroup.entries.forEach { group ->
                 ArrowPreference(group.title, startAction = { LeadingIcon(group.icon()) }, onClick = { navigate(Route.ToolsInGroup(group)) })
             }
@@ -25,7 +25,7 @@ import top.yukonga.miuix.kmp.preference.*
 @Composable fun ToolGroupPage(s: AppState, vm: AppViewModel, padding: PaddingValues, group: ToolGroup, navigate: (Route) -> Unit) {
     PageList(padding) {
         notices(s, vm)
-        item { Card(Modifier.fillMaxWidth()) {
+        item { SurfaceCard(Modifier.fillMaxWidth()) {
             ScriptCommand.entries.filter { it.group() == group }.forEach { command ->
                 ArrowPreference(command.label, onClick = {
                     vm.beginScript(command)
@@ -39,7 +39,7 @@ import top.yukonga.miuix.kmp.preference.*
 @Composable fun PromptCard(prompt: EnginePrompt, busy: Boolean, answer: (String) -> Unit) {
     var selected by rememberSaveable(prompt.id) { mutableStateOf(emptyList<Int>()) }
     var text by rememberSaveable(prompt.id) { mutableStateOf("") }
-    Card(insideMargin = PaddingValues(16.dp)) {
+    SurfaceCard(insideMargin = PaddingValues(16.dp)) {
         Text(prompt.title)
         if (prompt.mode == "input") {
             TextField(text, { text = it }, Modifier.fillMaxWidth(), label = "输入内容")

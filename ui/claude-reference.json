@@ -1,0 +1,32 @@
+{
+  "source": "https://claude.ai/artifact/AJAs2PXQQSsi1RehuUBbzD#page-dcb81aee8d83",
+  "exportSha256": "1f47c93a23362538734b2e39ce158bb67658e962d79b8a8ce6e26aa2b6329d70",
+  "product": "HyperBackup",
+  "referenceTitle": "DataBackup Miuix UI",
+  "pages": [
+    "Add-cloud-account",
+    "App-detail",
+    "Backup-apps",
+    "Backup-settings",
+    "Cloud-accounts",
+    "History",
+    "Home",
+    "Labels-and-blacklist",
+    "Progress",
+    "Restore",
+    "Result",
+    "Settings"
+  ],
+  "tokens": {
+    "canvas": "#F7F7F7",
+    "primary": "#2F6FEB",
+    "cardRadiusDp": 16,
+    "pageMarginDp": 12,
+    "contentMarginDp": 16,
+    "titleSp": 34,
+    "rowTitleSp": 17,
+    "summarySp": 13,
+    "iconDp": 24,
+    "appIconDp": 44
+  }
+}

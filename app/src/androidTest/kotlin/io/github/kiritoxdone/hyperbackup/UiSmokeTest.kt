@@ -36,6 +36,13 @@ class UiSmokeTest {
                 device.textOnPage("主题").click(100)
                 assertNotNull(device.wait(Until.findObject(By.text("深色")), 5000))
                 device.pressBack()
+                device.findObjects(By.text("首页")).last().click(100)
+                device.textOnPage("备份").click(100)
+                assertNotNull(device.wait(Until.findObject(By.text("应用")), 5000))
+                device.capturePage("大字体暗色-备份")
+                device.findObject(By.text("文件")).click(100)
+                assertNotNull(device.wait(Until.findObject(By.text("备份文件夹")), 5000))
+                device.capturePage("大字体暗色-文件")
             }
         } finally {
             if (originalScale == "null") device.executeShellCommand("settings delete system font_scale")

@@ -21,7 +21,7 @@ class SettingsUiTest {
         val preferences = (context.applicationContext as HyperBackupApp).preferences
         val before = runBlocking { preferences.engine.first() }.backup["Backup_Mode"]
         try {
-            val home = device.wait(Until.findObject(By.text("备份应用")), 10000)!!
+            val home = device.wait(Until.findObject(By.text("备份位置")), 10000)!!
             val homeTextHeight = home.visibleBounds.height()
             device.findObjects(By.text("设置")).last().click()
             device.textOnPage("备份默认值").click()
@@ -34,7 +34,7 @@ class SettingsUiTest {
             assertEquals("0", runBlocking { preferences.engine.first() }.backup["Backup_Mode"])
             context.startActivity(Intent(context, MainActivity::class.java).putExtra("testKeepScreenOn", true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
-            device.wait(Until.findObject(By.text("备份应用")), 10000)
+            device.wait(Until.findObject(By.text("备份位置")), 10000)
             device.findObjects(By.text("设置")).last().click()
             device.textOnPage("备份默认值").click()
             assertNotNull(device.wait(Until.findObject(By.text("仅安装包")), 5000))
